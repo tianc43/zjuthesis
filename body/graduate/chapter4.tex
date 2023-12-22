@@ -62,7 +62,7 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
 
 但是不容忽视的是，单独的数据流图相对于整个AST会丢失相当的语义信息，这就导致程序的语义信息并没有被完全利用起来。于是GraphCodeBERT模型的原作者又在两年后提出了UniXcoder模型\cite{unixcoder}，他们构建了一个one-to-one的映射函数，用于将AST转为一个序列结构，然后与源代码、注释拼接后作为模型的输入进行预训练。
 
-为了解决上述问题，本文拟在GraphCodeBERT模型的基础上，尝试在预训练的过程中增加更多的语义信息，即控制流图和函数调用图；另一方面，前文提出的静态代码指标也在一定维度上表达了智能合约的结构信息，因此本文将尝试融合静态代码指标与语义特征共同训练模型。
+为了解决上述问题，本文拟在GraphCodeBERT模型的基础上，尝试在预训练的过程中增加更多的语义信息，即控制流图和函数调用图；另一方面，前文已经阐述了静态代码指标在软件评估工作中的重要性，而且这些指标也能在一定维度上表达合约的结构信息，因此本文将尝试融合静态代码指标与语义特征，共同训练智能合约的漏洞检测模型。
 
 \subsection{模型架构}
 本文遵循GraphCodeBERT模型的基本架构，即采用多层双向Transformer作为模型主干。与之不同的是，我们将在模型训练阶段融入更多的代码结构和语义信息。
@@ -72,23 +72,75 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
 
 下一步是将输入序列$I$转换为输入向量$H^0$。主要方法是，先对输入序列中的每个token生成嵌入向量（Embedding），然后将之与该token的位置嵌入向量相加，最终得到整个序列的输入向量。具体地，对于源代码$S$中的每个token，它的位置嵌入向量由该token在源代码中所处的位置序号生成；对于$Var$、$Func$、$Block$中的token，需要使用特殊的标记符生成位置嵌入向量，以此来表示他们是语义图中的节点，而非源代码中的字段。
 
-输入向量$H^0$在经过$N$个Transformer层后被转换为上下文表示（Contextual Representation)，即$H^n=transformer_n(H^{n-1}),n\in[1,N]$，其中，每个Transformer层都包含一个完全相同的Transformer结构。向量$H^{n-1}$在$n-1$层经过Encoder编码和多头自注意力操作\cite{attention}后首先生成向量$G^n$（公式1），然后再经过一个前馈层生成向量$H^n$（公式2）。
-$$G^n=LN(MultiAttn(H^{n-1})+H^{n-1})$$
-$$H^n=LN(FFN(G^n)+G^n)$$
-这里的LN是什么意思？
-在公式1和公式2中，$MultiAttn$表示多头自注意力操作，$FFN$表示两层前馈网络，$LN$表示层归一化操作。
-首先可以利用xxx节描述的方法计算静态代码指标，表示为$M=\{m_{1},m_{2},...,m_{m}\}$，静态代码指标与语义特征的融合将在下一小节详细阐述。
-\autoref{fig:model_architecture}显示了本研究采用的模型架构。
+输入向量$H^0$在经过$N$个Transformer层后被转换为上下文表示（Contextual Representation)，即$H^n=transformer_n(H^{n-1}),n\in[1,N]$，其中，每个Transformer层都包含一个完全相同的Transformer结构。向量$H^{n-1}$在$n-1$层经过Encoder编码和多头自注意力操作\cite{attention}后首先生成向量$G^n$（公式\eqref{eq1}），然后再经过一个前馈层生成向量$H^n$（公式\eqref{eq2}）。
+\begin{equation}
+    G^n=LN(MultiAttn(H^{n-1})+H^{n-1}) \label{eq1}
+\end{equation}
+\begin{equation}
+H^n=LN(FFN(G^n)+G^n) \label{eq2}
+\end{equation}
+在公式\eqref{eq1}和公式\eqref{eq2}中，$MultiAttn$表示多头自注意力操作，$FFN$表示一个两层前馈网络，$LN$表示层归一化操作。
+
+其中，第n个Transformer层中多头自注意力操作的输出$\hat{G}^n$是通过如下方式计算的：
+\begin{equation}
+Q_i=H^{n-1}W_i^Q, K_i=H^{n-1}W_i^K, V_i=H^{n-1}W_i^V \label{eq3}
+\end{equation}
+\begin{equation}
+head_i=\text{softmax}(\frac{\mathrm{Q_iK_i^T}}{\sqrt{\mathrm{d_k}}}+\mathrm{M})\mathrm{V_i} \label{eq4}
+\end{equation}
+\begin{equation}
+\hat{G}^n=[head_1;...;head_u]W_n^O \label{eq5}
+\end{equation}
+公式\eqref{eq3}表示，前一个Transformer层的输出$H^{n-1}$分别与3个模型参数$W_i^Q,W_i^K,W_i^V$做内积后得到注意力机制中的三元组$Q_i,K_i,V_i$，具体可参考论文\cite{attention}。
+
+公式\eqref{eq4}和公式\eqref{eq5}中，$u$是注意力头的数量，$d_k$表示每个注意力头的维度。$M$是图导向的注意力掩码矩阵，其中如果第$j$个token允许被第$i$个token注意到，则$M_{ij}$为0，否则为$-\infty$，具体细节将在xxx中阐述。
+
+
+% 首先可以利用xxx节描述的方法计算静态代码指标，表示为$M=\{m_{1},m_{2},...,m_{m}\}$，静态代码指标与语义特征的融合将在下一小节详细阐述。
+\autoref{fig:model_architecture}显示了本研究采用的模型架构。\textcolor{red}{这里描述一下模型的架构}
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=.3\linewidth]{pictures/model_architecture}
     \caption{\label{fig:model_architecture}本研究采用的模型架构}
 \end{figure}
-描述一下模型架构
-\subsection{特征融合}
+\subsection{图导向的注意力掩码}
+为了将语义图合并输入到Transformer中，我们遵循原工作\cite{guo2020graphcodebert}引入了图导向的注意力函数来过滤掉不相关的信息。为了在模型中表示语义图中的有向边，以数据流图为例，如果存在有向边$\left\langle v_j,v_i \right\rangle$（即变量$v_i$的值来自变量$v_j$），此时掩码矩阵$M$中对应元素的值为0，\textcolor{red}{那么节点query$q_{v_i}$可以注意到key$k_{v_j}$}；否则，掩码矩阵中对应元素的值为$-\infty$，注意力得分${q^T}_jk_i$与之相加并且经过$softmax$函数后计算出的注意力权重变为0，\textcolor{red}{从而避免query$q_j$注意到key$k_i$。}
+
+另一方面，为了表示源代码和数据流之间的关系，我们定义了一个集合$E$记录源代码token$c_j$和变量$v_i$之间的映射关系，即$\left\langle c_j,v_i \right\rangle \in E$表示数据流图中的节点$v_i$和源代码中的token$c_j$相对应。然后，当且仅当$\left\langle c_j,v_i \right\rangle \in E$时，\textcolor{red}{我们允许节点$q_{v_i}$和代码$k_{c_j}$相互参与}，用形式化语言描述如下：
+\begin{equation}
+    M_{ij} =
+    \begin{cases}
+        0 & \begin{aligned}
+               &\text{if } q_i \in \{[CLS], [SEP]\} \text{ or } q_i, k_j \in W \cup C \\
+               &\text{or } \langle q_i, k_j \rangle \in E \cup E'
+           \end{aligned} \\
+        -\infty & \text{otherwise}
+    \end{cases}
+    \label{eq:mask}
+\end{equation}
+\textcolor{red}{必要时可扩展一下此章节}
 
 \subsection{训练任务}
-为了从源代码和数据流图中学习代码表示，他们引入了两种结构感知预训练任务，一种是数据流图的有向边预测任务，用于从数据流图中学习语义信息；另一种是源代码与数据流节点的对齐任务，用于映射源代码中的token与数据流图中的节点，从而保证源代码和数据流图在模型中的语义结构一致。
+除了基本的掩码语言建模（Masked Language Modeling，MLM）任务\cite{devlin2018bert}，GraphCodeBert模型中还引入两种全新的预训练任务：数据流边预测和跨源代码与数据流的变量对齐。本文中在数据流图基础上额外引入了控制流图和函数调用图，因此需要在每一类语义图上执行这两种预训练任务，即需要另外添加两类任务：控制流边预测和跨源代码与基本代码块对齐、函数调用边预测和跨源代码与函数名对齐。语义图边的预测任务是为了学习语义图的表示，让模型学习语义图的结构特征；源代码与语义图节点的对齐任务用于将源代码和语义图两种信息联系起来，让模型学习语义图中的节点在源代码中的位置信息。
+
+论文\cite{guo2020graphcodebert}中针对这两类任务提出了对应的损失函数（公式\eqref{loss1}和公式\eqref{loss2}），本文将遵循其设定。
+\begin{equation}
+loss_{EdgePred}=-\sum_{e_{ij}\in E_{c}}[\delta(e_{ij}\in E_{mask})logp_{e_{ij}}+(1-\delta(e_{ij}\in E_{mask}))log(1-p_{e_{ij}})] \label{loss1}
+\end{equation}
+\begin{equation}
+loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_{e_{ij}}+(1-\delta(e_{ij}\in E_{mask}^{'}))log(1-p_{e_{ij}})] \label{loss2}
+\end{equation}
+% 为了从源代码和数据流图中学习代码表示，他们引入了两种结构感知预训练任务，一种是数据流图的有向边预测任务，用于从数据流图中学习语义信息；另一种是源代码与数据流节点的对齐任务，用于映射源代码中的token与数据流图中的节点，从而保证源代码和数据流图在模型中的语义结构一致。
+
+
+% 值得一提的是，前文已经阐述了静态代码指标在软件评估工作中的重要性，而且这些指标能在一定维度上表达智能合约的结构信息，因此本文将尝试融合静态代码指标与语义特征，共同训练智能合约的漏洞检测模型，具体内容将在下一小节中阐述。
+\subsection{特征融合}
+上文描述的基于GraphCodeBERT模型经过预训练后，能针对智能合约源代码和对应的语义图生成高维的上下文表示，而xxx节中计算出的34个静态代码指标在一定维度上表达了智能合约的结构特征，因此如果能将这两种信息融合起来用于智能合约漏洞检测，可能会取得意想不到的效果，接下来将对此进行探究。
+
+常见的融合多种类特征的方法包括直接拼接、联合训练等。Pan等人通过联合语义特征和专家特征训练了一个模型，用于自动识别开发者聊天室中的信息类型，取得了较好的效果。因此，本文也借鉴这种方式，联合静态代码指标和GraphCodeBERT模型生成的表示向量，训练智能合约漏洞检测分类器。
+
+需要注意的是，静态代码指标生成的专家特征是包含34个维度的特征向量，相比于GraphCodeBERT模型生成的语义表示向量具有768个维度。为了避免高维度的语义向量对低维度的专家特征向量形成压倒性优势，本文借鉴了Yang等人的研究成果，利用深度学习技术（本文使用了一个全连接层）对专家特征向量进行嵌入，以获得高纬度的表示向量。如果以$Metrics=\{m_1,m_2,\ldots,m_{34}\}$表示最初计算出的34个专家特征，那么经过全连接层进行嵌入后得到其高维度表示$V_{metrics}=\{\alpha_1,\alpha_2,\ldots,\alpha_t\}$。GraphCodeBERT模型生成的语义表示向量记为$V_{semantic}=\{\beta_1,\beta_2,\ldots,\beta_t\}$，在输入分类器时，将$V_{metrics}$和$V_{semantic}$拼接成一个新向量$U=\{\alpha_1,\alpha_2,\ldots,\alpha_t,\beta_1,\beta_2,\ldots,\beta_t\}$，然后在一个全连接层中对其进行fine-tune。
+
 \section{实验设计}
 描述实验步骤
 在预训练阶段，模型学习了如何从图结构中提取有用的信息，并转化为向量表示（Embedding）
