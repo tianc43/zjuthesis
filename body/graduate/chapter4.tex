@@ -1,8 +1,11 @@
 \chapter{基于GraphCodeBERT模型的智能合约漏洞检测}
 \section{本章内容}
+\label{sec:本章内容4}
+本章是本文的核心内容，在上一章引入了智能合约的专家特征和语义特征后，本章将设计算法提取上述两种特征，然后参照GraphCodeBERT模型设计一个漏洞检测模型，最后开展实验。首先分别介绍了两种特征的计算或提取算法，然后介绍了GraphCodeBERT模型的基本架构、基于图的注意力掩码和两个关键的预训练任务，接着重点描述了一下本文提出的融合两种特征的方法。最后一部分介绍了实验的机器配置和模型的参数，以及用于对结果进行分析的评估指标，然后深入分析了实验结果。为了探究本文提出的专家特征以及特征融合等技术对实验结果的影响，最后还设计了多个消融实验并对结果进行了分析。
 本章主要介绍了基于GraphCodeBERT模型的智能合约漏洞检测方法，并实验设计与结果。
 \section{方法概述}
-预训练模型可以学习并理解复杂的程序结构，并且具有跨语言通用性，大量工作表明预训练模型在漏洞检测任务中表现出色\cite{pretrained_is_good_1,pretrained_is_good_2,pretrained_is_good_3}。同时，Wu等人的研究表明预训练模型在识别智能合约的重入漏洞方面，明显优于当时最先进的方法\cite{wu2021peculiar}。遵循上述思路，本文拟采用GraphCodeBert模型为基础进行智能合约的漏洞检测研究。总的来说，本文的研究方法主要包含以下几个步骤：①计算专家特征。依据xxx节描述的专家特征，从静态代码分析的角度对智能合约进行表示。②构建语义图。依据xxx节描述的三种语义图，提取智能合约的语义信息。③基于GraphCodeBERT训练漏洞检测模型。以GraphCodeBERT模型为基础，融合前两步生成的专家特征和语义信息训练漏洞检测模型。
+\label{sec:方法概述}
+预训练模型可以学习并理解复杂的程序结构，并且具有跨语言通用性，大量工作表明预训练模型在漏洞检测任务中表现出色\cite{pretrained_is_good_1,pretrained_is_good_2,pretrained_is_good_3}。同时，Wu等人的研究表明预训练模型在识别智能合约的重入漏洞方面，明显优于当时最先进的方法\cite{wu2021peculiar}。遵循上述思路，本文拟采用GraphCodeBert模型为基础进行智能合约的漏洞检测研究。总的来说，本文的研究方法主要包含以下几个步骤：\textcircled{1}计算专家特征。依据xxx节描述的专家特征，从静态代码分析的角度对智能合约进行表示。\textcircled{2}构建语义图。依据xxx节描述的三种语义图，提取智能合约的语义信息。\textcircled{3}基于GraphCodeBERT训练漏洞检测模型。以GraphCodeBERT模型为基础，融合前两步生成的专家特征和语义信息训练漏洞检测模型。
 \autoref{fig:framework}图xxx显示了本方法的框架结构。接下来，本文将逐一介绍上述三个步骤。
 \begin{figure}[htbp]
     \centering
@@ -11,6 +14,7 @@
 \end{figure}
 
 \section{计算专家特征}
+\label{sec:计算专家特征}
 xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx节中定义的专家特征，我们需要在本地编译Solidity源文件，然后构建抽象语法树再从中提取相关信息。py-solc-x\footnote{py-solc-x的网址}是solc\footnote{solc的网址}（Solidity编译器）的Python版本，py-solc-ast\footnote{py-solc-ast的网址}可以从solc编译后的信息中构建AST，并提供了API获取相关信息。
 
 借助上述工具，我们提取出了xxx节中定义的基于静态代码度量的专家特征，其统计信息如\autoref{tab:new_dataset_statistics}所示。
@@ -40,17 +44,22 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
 
 以太坊至于 SDFB，平均值和中位值分别为 0.51 和 1，这意味着约有一半的智能合约将回退功能作为默认设置。
 \section{构建语义图}
+\label{sec:构建语义图}
 抽象语法树以结构化的形式记录了源代码中的关键信息，因此可以从Solidity源代码的AST中提取智能合约的语义信息，然后分别构建数据流图、控制流图和函数调用图。接下来本文将逐一介绍构建这三种语义图的方法。
 \subsection{构建数据流图}
+\label{sec:构建数据流图}
 在xxx节中，我们已经获得了每个合约的抽象语法树，树的叶子节点记录的恰好是程序中的变量和字面量，将每个变量作为图中的一个节点，依据变量值在程序中的传递过程构建图中的有向边。变量的传递有两种方式，一种是直接引用，另一种是通过赋值语句。在图xxx中，从变量$MinDeposit^{17}$到变量$MinDeposit^{51}$ 的边属于第一种方式，称之为“comesFrom”类型，需要创建一条有向边$\left\langle MinDeposit^{17}, MinDeposit^{51}\right\rangle$。
 以赋值语句$a=MaxValue-MinValue$为例，它属于第二种方式，称之为“computedFrom”类型，此时需要创建两条有向边$\left\langle MaxValue,a\right\rangle$和$\left\langle MinValue,a\right\rangle$。
 
 在本文中，构建数据流图的方法将沿用论文\cite{wu2021peculiar}提出的算法。
 % 更具体地构建数据流图的过程描述为：遍历AST的所有节点，如果当前节点是叶子节点且属于标识符类型（identifier），则将其添加到变量集合中；如果当前节点的类型是赋值语句类型\footnote{当前节点一定具有左右子节点，因为当前合约是可以编译通过的，那么一定符合该语法规则}（assignment\_expression），则创建一条由右子节点指向左子节点的有向边，重复上述过程直到遍历完成，最终可以得到当前合约的数据流图。
 \subsection{构建函数调用图}
+\label{sec:构建函数调用图}
 同样地，智能合约的函数调用图需要从AST中构建。在遍历AST的过程中，需要重点关注两种类型的节点，即函数定义类型（function\_definition)和函数调用（call\_expression）类型。
 
 更具体地构建函数调用图的过程描述为：遍历AST的所有节点，同时使用栈数据结构记录当前路径上的函数标识符。如果当前遍历到的节点是函数定义类型，则将其添加到函数集合中；如果当前节点是函数调用类型，那说明栈顶标识符对应的函数调用了当前节点对应的函数，此时创建一条有向边。重复上述过程直到遍历完成，最终可以得到当前合约的函数调用图。上述算法的伪代码如代码清单所示。
+
+
 \begin{algorithm}
     \caption{GenerateCallGraph}
     % \label{alg:gen_callgraph}
@@ -68,7 +77,7 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
                 \If{Stack is not $\emptyset$}
                     \State sourceFunc $\gets$ peek of Stack
                     \State targetFunc $\gets$ function corresponding to node
-                    \State add edge  $\left\langle sourceFunc, targetFunc\right\rangle$ to callGraph
+                    \State add edge  $\left\langle sourceFunc,targetFunc\right\rangle$ to callGraph
                 \EndIf
             \EndIf
             \For{each child in node's children}
@@ -82,7 +91,21 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
         \State \Return callGraph
     \end{algorithmic}
     \end{algorithm}
+
+    \begin{algorithm}
+        \caption{Gradient Descent}
+        \begin{algorithmic}[1]
+          \Procedure{Gradient Descent}{$\{(\mathbf{X}_i,Y_i)\}_{i\in \text{train}},Ep,\eta,\lambda,\alpha,\mathbf{w}_0$}
+          \State $\mathbf{w}\leftarrow \mathbf{w}_0.$
+          \For{$i \in\{1,\ldots Ep\}$}
+          \State $\mathbf{w}\leftarrow \mathbf{w}-\eta(\nabla_{\mathbf{w}}MSE(c_{\mathbf{w}})+\lambda\mathbf{w})+\alpha\Delta(\mathbf{w}).$
+          \EndFor
+          \State{\textbf{Return} \textbf{w}.}
+          \EndProcedure
+        \end{algorithmic}
+      \end{algorithm}
 \subsection{构建控制流图}
+\label{sec:构建控制流图}
 控制流图依然需要从Solidity源代码的AST中构建，但与前两个语义图不同的是，控制流图的节点不再与AST中的节点相对应，前者应该是程序中的一个基本代码块，而不是一个标识符。在遍历AST的过程中，需要重点关注四种类型的节点：if语句、for语句、while语句和do-while语句，称为分支语句节点。遇到分支节点时需要将其拆分为3个代码块：条件代码块、条件为真时的基本代码块和条件为假时的基本代码块。
 
 更具体地构建控制流图的过程描述为：遍历AST的所有节点，同时使用栈数据结构记录当前路径上经过的基本代码块。如果当前节点属于分支语句节点，则针对该分支语句解析出3个代码块，每个代码块均作为控制流图的节点，同时创建两条有向边，分别从条件代码块指向真代码块和假代码块；否则，创建一条有向边，从栈顶的基本代码块指向当前基本代码块。重复上述过程直到遍历完成，最终可以得到当前合约的控制流图。
@@ -130,6 +153,7 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
     \end{algorithmic}
     \end{algorithm}
 \section{基于GraphCodeBERT的漏洞检测模型}
+\label{sec:基于GraphCodeBERT的漏洞检测模型}
 % 或者将语义特征与专家特征联合训练来构建模型
 % 用源代码+语义图经过GraphCodeBERT模型生成高维向量，然后与专家特征结合，经过分类器
 先前的预训练模型总是像对待文本一样去对待源代码，将其视为一连串token组成的序列，而忽视了源代码的复杂结构中蕴含的语义信息，于是GraphCodeBERT模型应运而生，它是第一个利用代码语义结构来学习代码表示的预训练模型\cite{guo2020graphcodebert}。最能表达程序语义信息的数据结构莫过于AST，但是AST作为树结构无法被直接输入到Transformer结构的模型中去，另一方面随着程序代码量的增多，AST的深度和宽度都会急剧增大。因此，GraphCodeBert模型采用了数据流图表征程序的语义信息。实验结果表明，引入了语义信息的GraphCodeBERT模型在多个下游任务上取得了最先进的效果。
@@ -139,6 +163,7 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
 为了解决上述问题，本文拟在GraphCodeBERT模型的基础上，尝试在预训练的过程中增加更多的语义信息，即控制流图和函数调用图；另一方面，前文已经阐述了静态代码指标在软件评估工作中的重要性，而且这些指标也能在一定维度上表达合约的结构信息，因此本文将尝试融合静态代码指标与语义特征，共同训练智能合约的漏洞检测模型。
 
 \subsection{模型架构}
+\label{sec:模型架构}
 本文遵循GraphCodeBERT模型的基本架构，即采用多层双向Transformer作为模型主干。与之不同的是，我们将在模型训练阶段融入更多的代码结构和语义信息。
 
 具体来说，给定源代码$S=\{s_{1},s_{2},...,s_{n}\}$，可以利用xxx节描述的方法构建三种智能合约语义图，首先是数据流图$DFG(S)=(Var,DFG\_Edge)$，其中$Var=\{v_1,v_2,\ldots,v_k\}$是智能合约$S$的变量集合，$DFG\_Edge=\{\epsilon_1,\epsilon_2,~\ldots,~\epsilon_l\}$是有向边，表示每个变量的值来自哪里；然后是函数调用图$CG(S)=(Func,CG\_Edge)$，$Func=\{f_1,f_2,\ldots,f_s\}$是智能合约的函数集合，$CG\_Edge=\{\zeta_1,\zeta_2,~\ldots,~\zeta_l\}$是有向边，表示合约内不同函数的调用关系；最后还有控制流图$CFG(S)=(Block,CFG\_Edge)$，其中$Block=\{b_1,b_2,\ldots,b_t\}$表示合约内的基本代码块（即不含分支语句，可以顺序执行的代码），$CFG\_Edge=\{\iota_1,\iota_2,~\ldots,~\iota_l\}$表示是有向边，表示合约的执行路径。然后，遵循GraphCodeBERT模型的思路，将源代码和三种语义信息拼接成一个序列$I=\{[CLS],S,[SEP],Var,[SEP],Func,[SEP],Block\}$，其中$[CLS]$是每个输入序列前的特殊标记，$[SEP]$是不同数据段之间的分隔符。
@@ -178,6 +203,7 @@ head_i=\text{softmax}(\frac{\mathrm{Q_iK_i^T}}{\sqrt{\mathrm{d_k}}}+\mathrm{M})\
     \caption{\label{fig:model_architecture}本研究采用的模型架构}
 \end{figure}
 \subsection{基于图的注意力掩码}
+\label{sec:基于图的注意力掩码}
 为了将语义图合并输入到Transformer中，我们遵循原工作\cite{guo2020graphcodebert}引入了基于图的注意力函数来过滤掉不相关的信息。为了在模型中表示语义图中的有向边，以数据流图为例，如果存在有向边$\left\langle v_j,v_i \right\rangle$（即变量$v_i$的值来自变量$v_j$），此时掩码矩阵$M$中对应元素的值为0，\textcolor{red}{那么节点query$q_{v_i}$可以注意到key$k_{v_j}$}；否则，掩码矩阵中对应元素的值为$-\infty$，注意力得分${q^T}_jk_i$与之相加并且经过$softmax$函数后计算出的注意力权重变为0，\textcolor{red}{从而避免query$q_j$注意到key$k_i$。}
 
 另一方面，为了表示源代码和数据流之间的关系，我们定义了一个集合$E$记录源代码token$c_j$和变量$v_i$之间的映射关系，即$\left\langle c_j,v_i \right\rangle \in E$表示数据流图中的节点$v_i$和源代码中的token$c_j$相对应。然后，当且仅当$\left\langle c_j,v_i \right\rangle \in E$时，\textcolor{red}{我们允许节点$q_{v_i}$和代码$k_{c_j}$相互参与}，用形式化语言描述如下：
@@ -195,6 +221,7 @@ head_i=\text{softmax}(\frac{\mathrm{Q_iK_i^T}}{\sqrt{\mathrm{d_k}}}+\mathrm{M})\
 \textcolor{red}{必要时可扩展一下此章节}
 
 \subsection{训练任务}
+\label{sec:训练任务}
 除了基本的掩码语言建模（Masked Language Modeling，MLM）任务\cite{devlin2018bert}，GraphCodeBert模型中还引入两种全新的预训练任务：数据流边预测和跨源代码与数据流的变量对齐。本文中在数据流图基础上额外引入了控制流图和函数调用图，因此需要在每一类语义图上执行这两种预训练任务，即需要另外添加两类任务：控制流边预测和跨源代码与基本代码块对齐、函数调用边预测和跨源代码与函数名对齐。语义图边的预测任务是为了学习语义图的表示，让模型学习语义图的结构特征；源代码与语义图节点的对齐任务用于将源代码和语义图两种信息联系起来，让模型学习语义图中的节点在源代码中的位置信息。
 
 论文\cite{guo2020graphcodebert}中针对这两类任务提出了对应的损失函数（公式\eqref{loss1}和公式\eqref{loss2}），本文将遵循其设定。
@@ -209,6 +236,7 @@ loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_
 
 % 值得一提的是，前文已经阐述了静态代码指标在软件评估工作中的重要性，而且这些指标能在一定维度上表达智能合约的结构信息，因此本文将尝试融合静态代码指标与语义特征，共同训练智能合约的漏洞检测模型，具体内容将在下一小节中阐述。
 \subsection{特征融合}
+\label{sec:特征融合}
 上文描述的基于GraphCodeBERT模型经过预训练后，能针对智能合约源代码和对应的语义图生成高维的上下文表示，而xxx节中计算出的34个静态代码指标在一定维度上表达了智能合约的结构特征，因此如果能将这两种信息融合起来用于智能合约漏洞检测，可能会取得意想不到的效果，接下来将对此进行探究。
 
 常见的融合多种类特征的方法包括直接拼接、联合训练等。Pan等人通过联合语义特征和专家特征训练了一个模型，用于自动识别开发者聊天室中的信息类型，取得了较好的效果。因此，本文也借鉴这种方式，联合静态代码指标和GraphCodeBERT模型生成的表示向量，训练智能合约漏洞检测分类器。
@@ -220,11 +248,13 @@ loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_
 \hat{y}=Sigmoid(\hat{U}^{2t}) \label{classifier}
 \end{equation}
 \section{实验设计与结果分析}
+\label{sec:实验设计与结果分析}
 描述实验步骤
 在预训练阶段，模型学习了如何从图结构中提取有用的信息，并转化为向量表示（Embedding）
 
 
 \subsection{实验参数及环境}
+\label{sec:实验参数及环境}
 本文的所有实验的运行环境表\ref{tab:environment}所示。
 
 \begin{table}[htbp]
@@ -273,6 +303,7 @@ loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_
 
 
 \subsection{评估指标}
+\label{sec:评估指标}
 在分类模型中，选用正确的评估标准对模型的度量和评估至关重要，能够及时发现模型的缺陷和可能出现的错误，并根据实际问题不断迭代优化模型。混淆矩阵作为一种可视化工具，通常用于监督学习中比较分类结果和实例的真实标签，反应了分类结果的混淆程度，矩阵的每一列代表实例的真实标签，每一行代表的是预测结果。 如表 4-2 所示，在混淆矩阵中，TP 代表真阳性，表示预测结果和真实结果均为正类；FP 代表假阳性，表示预测结果为正类但真实结果为负类；TN 代表真阴性，表示预测结果和真实结果均为负类；FN 代表假阴性，表示预测结果为负类但真实结果为正类。 
 \begin{table}[htbp]
     \caption{\label{tab:confusion_matrix}现有工作中使用的数据集的统计信息}
@@ -292,6 +323,7 @@ loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_
 \text{F1-score}=2\cdot\frac{\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recal}} \label{f1-score}
 \end{equation}
 \subsection{实验结果分析}
+\label{sec:实验结果分析}
 为了验证本文提出的漏洞检测模型的性能，我们将本模型与x种现有的智能合约分析工具进行比较，包括Oyente、Mythril、SmartCheck等等。
 
 \autoref{fig:experiment_result}显示了区块链系统的架构模型。
@@ -319,6 +351,7 @@ loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_
 表 4-4 所示为六个模型分别对五种漏洞进行检测的 Precision 值，Recall 值和 F1score，Precision 值可以衡量模型预测出来的样本中被正确预测的数量， Recall 值是用来表示实际样本中有多少被正确预测的数量，F1-score 是统计学中用来衡量二分类模型精确度的一种指标，它同时兼顾了分类模型的准确率和召回率，可以看作是模型准确率和召回率的一种加权平均。从表中可以发现 RNN、LSTM 和 Bi-LSTM 模型都出现了严重的过拟合现象，这是因为训练样本中整数上溢、整数下溢和交易顺序依赖三种漏洞的样本数量远远大于可重入漏洞和时间戳依赖漏洞的数量，模型在不平衡的数据下被训练
 地更倾向于样本都包含这三种漏洞，因此这三种漏洞的 Recall 值都为 1，而另外两种样本较少漏洞的 Recall 值为 0。而添加了注意力机制的 LSTM-ATT 模型以及 BiL-ATT 模型，能够合理均衡不同的漏洞，反映出注意力机制可以有效增强模型的泛化能力。由于 TextCNN 模型的网络结构较为简单，因此它也避免了过分拟合漏洞数量较多的漏洞。 BiL-ATT 模型虽然也在样本数量较少的漏洞分类精度不高，在可重入漏洞检测上的 Precision 值仅有 78.92\%，低于 LSTM-ATT 模型和 TextCNN 模型，但是在时间戳依赖漏洞上达到 83.68\%，远高于 LSTM-ATT 模型和 TextCNN 模型，并且在整数上溢、整数下溢和交易顺序依赖这三种漏洞数量较多的样本中，WBL-ATT 模型表现优秀，其 Precision 值大于 TextCNN 模型和 LSTM-ATT 模型。综合来说，BiL-ATT 模型具有较好的泛化性能，能有效地检测智能合约的多种漏洞。 
 \subsection{消融实验与结果分析}
+\label{sec:消融实验与结果分析}
 为了验证本文引入的两种语义图（控制流图和函数调用图）、以及静态代码指标和语义特征融合训练的方法对漏洞检测任务的贡献，本文又在基本实验的基础上增加了消融实验，具体结果如表\autoref{tab:ablation_result}所示。
 \begin{table}[htbp]
     \caption{\label{tab:ablation_result}现有工作中使用的数据集的统计信息}
