@@ -5,7 +5,7 @@
 % 本章主要介绍了基于GraphCodeBERT模型的智能合约漏洞检测方法，并实验设计与结果。
 \section{方法概述}
 \label{sec:方法概述}
-预训练模型可以学习并理解复杂的程序结构，并且具有跨语言通用性，大量工作表明预训练模型在漏洞检测任务中表现出色\cite{pretrained_is_good_1,pretrained_is_good_2,pretrained_is_good_3}。同时，Wu等人的研究表明预训练模型在识别智能合约的重入漏洞方面，明显优于当时最先进的方法\cite{wu2021peculiar}。遵循上述思路，本文拟采用GraphCodeBert模型为基础进行智能合约的漏洞检测研究。总的来说，本文的研究方法主要包含以下几个步骤：\textcircled{1}计算专家特征。依据xxx节描述的专家特征，从静态代码分析的角度对智能合约进行表示。\textcircled{2}构建语义图。依据xxx节描述的三种语义图，提取智能合约的语义信息。\textcircled{3}基于GraphCodeBERT训练漏洞检测模型。以GraphCodeBERT模型为基础，融合前两步生成的专家特征和语义信息训练漏洞检测模型。\autoref{fig:framework2}是该方法的示意图。接下来，本文将逐一介绍上述三个步骤。
+预训练模型可以学习并理解复杂的程序结构，并且具有跨语言通用性，大量工作表明预训练模型在漏洞检测任务中表现出色\cite{pretrained_is_good_1,pretrained_is_good_2,pretrained_is_good_3}。同时，Wu等人的研究表明预训练模型在识别智能合约的重入漏洞方面，明显优于当时最先进的方法\cite{wu2021peculiar}。遵循上述思路，本文拟采用GraphCodeBert模型为基础进行智能合约的漏洞检测研究。总的来说，本文的研究方法主要包含以下几个步骤：\textcircled{1}计算专家特征。依据\autoref{sec:基于静态度量定义专家特征}描述的专家特征，从静态代码分析的角度对智能合约进行表示。\textcircled{2}构建语义图。依据\autoref{sec:基于合约语义图提取语义特征}描述的三种语义图，提取智能合约的语义信息。\textcircled{3}基于GraphCodeBERT训练漏洞检测模型。以GraphCodeBERT模型为基础，融合前两步生成的专家特征和语义信息训练漏洞检测模型。\autoref{fig:framework2}是该方法的示意图。接下来，本文将逐一介绍上述三个步骤。
 \begin{figure}[htbp]
     \centering
     \includegraphics[width= \linewidth]{pictures/framework2}
@@ -14,9 +14,9 @@
 
 \section{计算专家特征}
 \label{sec:计算专家特征}
-xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx节中定义的专家特征，我们需要在本地编译Solidity源文件，然后构建抽象语法树再从中提取相关信息。py-solc-x\footnote{https://github.com/ApeWorX/py-solc-x}是Solidity编译器solc\footnote{https://github.com/ethereum/solc-bin}的Python版本，py-solc-ast\footnote{https://github.com/iamdefinitelyahuman/py-solc-ast}可以从solc编译后的信息中构建AST，并提供了API获取相关信息。
+\autoref{sec:数据搜集与预处理}中获取的数据集并不包含合约的编译信息，为了获得\autoref{sec:基于静态度量定义专家特征}中定义的专家特征，我们需要在本地编译Solidity源文件，然后构建抽象语法树再从中提取相关信息。py-solc-x\footnote{https://github.com/ApeWorX/py-solc-x}是Solidity编译器solc\footnote{https://github.com/ethereum/solc-bin}的Python版本，py-solc-ast\footnote{https://github.com/iamdefinitelyahuman/py-solc-ast}可以从solc编译后的信息中构建AST，并提供了API获取相关信息。
 
-借助上述工具，我们提取出了xxx节中定义的基于静态代码度量的专家特征，其统计信息如\autoref{tab:dataset_statistics}所示。
+借助上述工具，我们提取出了基于静态代码度量的专家特征，其统计信息如\autoref{tab:dataset_statistics}所示。
 \begin{table}[htbp]
     \caption{\label{tab:dataset_statistics}本数据集静态代码指标的统计信息}
     \small
@@ -81,7 +81,8 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
 抽象语法树以结构化的形式记录了源代码中的关键信息，因此可以从Solidity源代码的AST中提取智能合约的语义信息，然后分别构建数据流图、控制流图和函数调用图。接下来本文将逐一介绍构建这三种语义图的方法。
 \subsection{构建数据流图}
 \label{sec:构建数据流图}
-在xxx节中，我们已经获得了每个合约的抽象语法树，树的叶子节点记录的恰好是程序中的变量和字面量，将每个变量作为图中的一个节点，依据变量值在程序中的传递过程构建图中的有向边。变量的传递有两种方式，一种是直接引用，另一种是通过赋值语句。在图xxx中，从变量$MinDeposit_{17}$到变量$MinDeposit_{51}$ 的边属于第一种方式，称之为“comesFrom”类型，需要创建一条有向边$\left\langle MinDeposit_{17}, MinDeposit_{51}\right\rangle$。
+在\autoref{sec:计算专家特征}中，我们已经获得了每个合约的抽象语法树，树的叶子节点记录的恰好是程序中的变量和字面量，将每个变量作为图中的一个节点，依据变量值在程序中的传递过程构建图中的有向边。变量的传递有两种方式，一种是直接引用，另一种是通过赋值语句。
+直接使用函数入参形成的数据流边属于第一种方式，称之为“comesFrom”类型。
 以赋值语句$a=MaxValue-MinValue$为例，它属于第二种方式，称之为“computedFrom”类型，此时需要创建两条有向边$\left\langle MaxValue,a\right\rangle$和$\left\langle MinValue,a\right\rangle$。
 
 在本文中，构建数据流图的方法将沿用论文\cite{wu2021peculiar}提出的算法。
@@ -189,7 +190,7 @@ xxx节中获取的数据集并不包含合约的编译信息，为了获得xxx�
 本文遵循GraphCodeBERT模型的基本架构，即采用多层双向Transformer作为模型主干。与之不同的是，我们将在模型训练阶段融入更多的代码结构和语义信息。\autoref{fig:graphcodebert}显示了本研究采用的模型架构。%%%%%%%%%%%%%%%\textcolor{red}{这里描述一下模型的架构}
 
 
-具体来说，给定源代码$S=\{s_{1},s_{2},...,s_{n}\}$，可以利用xxx节描述的方法构建三种智能合约语义图，首先是数据流图$DFG(S)=(Var,DFG\_Edge)$，其中$Var=\{v_1,v_2,\ldots,v_k\}$是智能合约$S$的变量集合，$DFG\_Edge=\{\epsilon_1,\epsilon_2,~\ldots,~\epsilon_l\}$是有向边，表示每个变量的值来自哪里；然后是函数调用图$FCG(S)=(Func,FCG\_Edge)$，$Func=\{f_1,f_2,\ldots,f_s\}$是智能合约的函数集合，$FCG\_Edge=\{\zeta_1,\zeta_2,~\ldots,~\zeta_l\}$是有向边，表示合约内不同函数的调用关系；最后还有控制流图$CFG(S)=(Block,CFG\_Edge)$，其中$Block=\{b_1,b_2,\ldots,b_t\}$表示合约内的基本代码块（即不含分支语句，可以顺序执行的代码），$CFG\_Edge=\{\iota_1,\iota_2,~\ldots,~\iota_l\}$表示是有向边，表示合约的执行路径。然后，遵循GraphCodeBERT模型的思路，将源代码和三种语义信息拼接成一个序列$I=\{[CLS],S,[SEP],Var,[SEP],Func,[SEP],Block\}$，其中$[CLS]$是每个输入序列前的特殊标记，$[SEP]$是不同数据段之间的分隔符。
+具体来说，给定源代码$S=\{s_{1},s_{2},...,s_{n}\}$，可以利用\autoref{sec:构建语义图}中描述的方法构建三种智能合约语义图，首先是数据流图$DFG(S)=(Var,DFG\_Edge)$，其中$Var=\{v_1,v_2,\ldots,v_k\}$是智能合约$S$的变量集合，$DFG\_Edge=\{\epsilon_1,\epsilon_2,~\ldots,~\epsilon_l\}$是有向边，表示每个变量的值来自哪里；然后是函数调用图$FCG(S)=(Func,FCG\_Edge)$，$Func=\{f_1,f_2,\ldots,f_s\}$是智能合约的函数集合，$FCG\_Edge=\{\zeta_1,\zeta_2,~\ldots,~\zeta_l\}$是有向边，表示合约内不同函数的调用关系；最后还有控制流图$CFG(S)=(Block,CFG\_Edge)$，其中$Block=\{b_1,b_2,\ldots,b_t\}$表示合约内的基本代码块（即不含分支语句，可以顺序执行的代码），$CFG\_Edge=\{\iota_1,\iota_2,~\ldots,~\iota_l\}$表示是有向边，表示合约的执行路径。然后，遵循GraphCodeBERT模型的思路，将源代码和三种语义信息拼接成一个序列$I=\{[CLS],S,[SEP],Var,[SEP],Func,[SEP],Block\}$，其中$[CLS]$是每个输入序列前的特殊标记，$[SEP]$是不同数据段之间的分隔符。
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=.98\linewidth]{pictures/graphcodebert}
@@ -219,7 +220,7 @@ head_i=\text{softmax}(\frac{\mathrm{Q_iK_i^T}}{\sqrt{\mathrm{d_k}}}+\mathrm{M})\
 \end{equation}
 公式\eqref{eq3}表示，前一个Transformer层的输出$H^{n-1}$分别与3个模型参数$W_i^Q,W_i^K,W_i^V$做内积后得到注意力机制中的三元组$Q_i,K_i,V_i$，具体可参考论文\cite{attention}。
 
-公式\eqref{eq4}和公式\eqref{eq5}中，$u$是注意力头的数量，$d_k$表示每个注意力头的维度。$M$是基于图的注意力掩码矩阵，其中如果第$j$个token允许被第$i$个token注意到，则$M_{ij}$为0，否则为$-\infty$，具体细节将在xxx中阐述。
+公式\eqref{eq4}和公式\eqref{eq5}中，$u$是注意力头的数量，$d_k$表示每个注意力头的维度。$M$是基于图的注意力掩码矩阵，其中如果第$j$个token允许被第$i$个token注意到，则$M_{ij}$为0，否则为$-\infty$，具体细节将在下一节中阐述。
 
 
 % 首先可以利用xxx节描述的方法计算静态代码指标，表示为$M=\{m_{1},m_{2},...,m_{m}\}$，静态代码指标与语义特征的融合将在下一小节详细阐述。
@@ -256,11 +257,11 @@ loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_
 
 \subsection{特征融合}
 \label{sec:特征融合}
-上文描述的基于GraphCodeBERT模型经过预训练后，能针对智能合约源代码和对应的语义图生成高维的上下文表示，而xxx节中计算出的34个静态代码指标在一定维度上表达了智能合约的结构特征，因此如果能将这两种信息融合起来用于智能合约漏洞检测，可能会取得意想不到的效果，接下来将对此进行探究。
+上文描述的基于GraphCodeBERT模型经过预训练后，能针对智能合约源代码和对应的语义图生成高维的上下文表示，而\autoref{sec:基于静态度量定义专家特征}中计算出的34个静态代码指标在一定维度上表达了智能合约的结构特征，因此如果能将这两种信息融合起来用于智能合约漏洞检测，可能会取得意想不到的效果，接下来将对此进行探究。
 
 常见的融合多种类特征的方法包括直接拼接、联合训练等。Pan等人通过联合语义特征和专家特征训练了一个模型，用于自动识别开发者聊天室中的信息类型，取得了较好的效果。因此，本文也借鉴这种方式，联合静态代码指标和GraphCodeBERT模型生成的表示向量，训练智能合约漏洞检测分类器。
 
-需要注意的是，静态代码指标生成的专家特征是包含34个维度的特征向量，相比于GraphCodeBERT模型生成的语义表示向量具有768个维度。为了避免高维度的语义向量对低维度的专家特征向量形成压倒性优势，本文借鉴了Yang等人的研究成果，利用深度学习技术（本文使用了一个全连接层）对专家特征向量进行嵌入，以获得高纬度的表示向量。如果以$Metrics=\{m_1,m_2,\ldots,m_{34}\}$表示最初计算出的34个专家特征，那么经过全连接层进行嵌入后得到其高维度表示$V_{metrics}=\{\alpha_1,\alpha_2,\ldots,\alpha_t\}$。GraphCodeBERT模型生成的语义表示向量记为$V_{semantic}=\{\beta_1,\beta_2,\ldots,\beta_t\}$，也即公式\eqref{eq5}中的$\hat{G}^n$，在输入分类器时，将$V_{metrics}$和$V_{semantic}$拼接成一个新向量$U=\{\alpha_1,\alpha_2,\ldots,\alpha_t,\beta_1,\beta_2,\ldots,\beta_t\}$，然后在一个全连接层中对其进行fine-tune。
+需要注意的是，静态代码指标生成的专家特征是包含34个维度的特征向量，相比于GraphCodeBERT模型生成的高维度表示向量。为了避免高维度的语义向量对低维度的专家特征向量形成压倒性优势，本文借鉴了Yang等人\cite{yang2015}的研究成果，利用深度学习技术（本文使用了一个全连接层）对专家特征向量进行嵌入，以获得高纬度的表示向量。如果以$Metrics=\{m_1,m_2,\ldots,m_{34}\}$表示最初计算出的34个专家特征，那么经过全连接层进行嵌入后得到其高维度表示$V_{metrics}=\{\alpha_1,\alpha_2,\ldots,\alpha_t\}$。GraphCodeBERT模型生成的语义表示向量记为$V_{semantic}=\{\beta_1,\beta_2,\ldots,\beta_t\}$，也即公式\eqref{eq5}中的$\hat{G}^n$，在输入分类器时，将$V_{metrics}$和$V_{semantic}$拼接成一个新向量$U=\{\alpha_1,\alpha_2,\ldots,\alpha_t,\beta_1,\beta_2,\ldots,\beta_t\}$，然后在一个全连接层中对其进行fine-tune。
 
 在整个模型的最后，本文使用一个线性分类器，并使用$softmax$函数将结果转换为不同漏洞类别的预测概率，如公式\eqref{classifier}所示。
 \begin{equation}
