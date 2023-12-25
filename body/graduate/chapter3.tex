@@ -6,42 +6,65 @@
 \label{sec:数据搜集与预处理}
 \subsection{数据搜集}
 \label{sec:数据搜集}
-本文拟使用深度学习方法进行智能合约漏洞检测和运行时崩溃相关的研究，需要使用大量的智能合约源代码作为训练模型的数据集，而现有的相关工作中使用的数据集均存在各种各样的问题，如智能合约数量太少、缺少对应字节码、Solidity版本过低等，\autoref{tab:present_dataset_statistics}显示了这些数据集的统计信息。
+本文拟使用深度学习方法进行智能合约漏洞检测和运行时崩溃相关的研究，需要使用大量的智能合约源代码作为训练模型的数据集，而现有的相关工作中使用的数据集或多或少存在一些问题，如智能合约数量太少、Solidity版本过低、没有标注等，\autoref{tab:present_dataset_statistics}显示了现有的智能合约数据集的统计信息。
 \begin{table}[htbp]
     \caption{\label{tab:present_dataset_statistics}现有工作中使用的数据集的统计信息}
     \small
     \renewcommand{\arraystretch}{1.5}
-    \begin{tabularx}{\linewidth}{cX<{\centering}X<{\centering}X<{\centering}}
+    \begin{tabularx}{\linewidth}{cX<{\centering}X<{\centering}X<{\centering}p{3cm}}
         \hline
-    数据集名称     & 智能合约数量 & 源代码与字节码 & 时间段            \\ \hline
-    smartbugs & 47,518  & 源代码；字节码 & 2015$\sim$2019 \\
-    crawID    & 321432 & 源代码     & 2015$\sim$2018 \\
-    JiuZhou   & 54325  & 字节码     & 2015$\sim$2018 \\
-    xxx       & 5435   & 源代码；字节码 & 2015$\sim$2019  \\  \hline
+    数据集名称     & 智能合约数量 & 包含源代码 & 漏洞标签 & 合约最大创建时间            \\ \hline
+    SmartBugs\cite{smartbugs} & 47518  & 是 & 无 & 2019年8月 \\
+    ScrawID\cite{yashavant2022scrawld}    & 6780 & 是   & 有  & 2020年6月 \\
+    Ren\cite{ren2021} &  45622 & 是 & 无 & 2020年12月 \\
+    JiuZhou\cite{jiuzhou}   & 176  & 是  & 有   & 2019年9月 \\
+    SmartCheck\cite{smartcheck}       & 4600   & 是 & 无 & 2018年11月  \\  \hline
     \end{tabularx}
 \end{table}
-另一方面，Solidity语言的更新会修复一些低版本智能合约中的漏洞，以太坊虚拟机的更新也会减少智能合约出现运行时异常的情况，因此搜集较新的智能合约数据进行研究是十分必要的。\autoref{fig:ethereum_solidity_version_history}显示了自2019年来以太坊虚拟机和Solidity语言的重要更新。
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=.3\linewidth]{pictures/ethereum_solidity_version_history}
-    \caption{\label{fig:ethereum_solidity_version_history}以太坊和Solidity自2019年以来的版本更迭}
-\end{figure}
-下一步是确定搜集何种数据以及如何搜集数据。本文的目标是研究智能合约的漏洞情况，以及在以太坊虚拟机上的执行情况，因此需要从以太坊网络获取至少产生过一笔交易的智能合约。相比于Github等代码托管平台上的智能合约源代码，从以太坊区块链上获取的智能合约更加具有现实意义。Evgeny\cite{bigquery_ethereum}在BigQuery\footnote{Google BigQuery 是 Google Cloud Platform 提供的一项企业级数据仓库服务，它允许执行快速的 SQL 查询和交互式分析大规模数据集}上创建并公开了以太坊数据库，包含以太坊区块链上智能合约和交易的所有信息。同时部署了自动化工具每天从以太坊中提取最新的数据，并将其同步到数据库中。另一方面，Etherscan\footnote{Etherscan的网址}是一个以太坊区块链数据分析平台，提供了应用程序接口（Application Programming Interface，API）用于查询区块链上的数据。综上所述，搜集数据的方法包含2个步骤：首先使用BigQuery数据库收集至少有一笔交易的智能合约账户地址，然后将合约地址作为参数调用Etherscan相关的API得到智能合约的源代码等数据。
+另一方面，Solidity语言的更新会修复一些低版本智能合约中的漏洞，以太坊虚拟机的更新也会减少智能合约出现运行时异常的情况，因此搜集较新的智能合约源代码进行研究是十分必要的。\autoref{tab:solidity_evm_update}显示了自2018以年来Solidity语言和EVM的重要版本更新。
+
+下一步是确定搜集何种数据以及如何搜集数据。本文的目标是研究智能合约的漏洞情况，以及在以太坊虚拟机上的执行情况，因此需要从以太坊网络获取至少产生过一笔交易的智能合约。相比于Github等代码托管平台上的智能合约源代码，从以太坊区块链上获取的智能合约更加具有现实意义。Evgeny\cite{bigquery_ethereum}在BigQuery\footnote{Google BigQuery 是 Google Cloud Platform 提供的一项企业级数据仓库服务，它允许执行快速的 SQL 查询和交互式分析大规模数据集}上创建并公开了以太坊数据库，包含以太坊区块链上智能合约和交易的所有信息。同时部署了自动化工具每天从以太坊中提取最新的数据，并将其同步到数据库中。另一方面，Etherscan\footnote{https://www.etherscan.io/}是一个以太坊区块链数据分析平台，提供了应用程序接口（Application Programming Interface，API）用于查询区块链上的数据。综上所述，搜集数据的方法包含2个步骤：首先使用BigQuery数据库收集至少有一笔交易的智能合约账户地址，然后将合约地址作为参数调用Etherscan相关的API得到智能合约的源代码等数据。
+\begin{table}[htbp]
+    \caption{\label{tab:solidity_evm_update}Solidity语言和EVM自2018年以来的版本更新}
+    \small
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabularx}{\linewidth}{p{1cm}p{7cm}<{\raggedright}X<{\raggedright}}
+    \hline
+    \textbf{年份} & \textbf{EVM更新内容} & \textbf{Solidity 更新内容} \\ \hline
+    2018 & 性能优化，安全性增强 & 0.5.x: 明确可见性声明，引入新的数据位置 \\ \hline
+    2019 & Gas成本优化，抗DDoS能力提升，以太坊与Zcash互操作性，智能合约创新功能 & 0.7.0: 禁止某些标识符，引入Unicode字符串，构造函数可见性废弃，严格状态可变性 \\ \hline
+    2020 & 移除难度炸弹，应对区块生成时间增长问题 & 0.7.x: 新增error类型，废除fallback函数 \\ \hline
+    2021 & 改变手续费结构，引入基础费与矿工费，销毁部分基础费以降低ETH流通量 & 0.8.x: 引入算术运算溢出检查，优化事件列表 \\ \hline
+    2022 & PoW转PoS，验证节点与出块奖励变更，手续费与存储优化。 & 语言和编译器优化、支持新的以太坊功能 \\ \hline
+    2023 & 质押提款功能，降低Layer-2解决方案Gas费，引入EOF优化智能合约字节码 & 0.9.0.alpha: 集成require()与Custom Error，IR优化，增强错误处理，引入EOF \\ \hline
+    \end{tabularx}
+    \end{table}
 \subsection{数据预处理}
 \label{sec:数据预处理}
 
 最后一步需要对原始数据集进行预处理，过滤掉一些不符合期望的智能合约，我们设定了以下的排除规则：
-\begin{enumerate}
+\begin{itemize}
     \item \textbf{移除重复的合约}。有些合约可能会被重复部署，所以我们比较Solidity文件的MD5值，如果相同则排除其一。
     \item \textbf{移除交易数太少的合约}。交易数太少的合约可能含有严重的缺陷，没有足够的运行信息证明其安全性，所以研究意义不大。
     \item \textbf{移除编译错误的合约}。编译错误的合约无法运行，没有研究价值。
     \item \textbf{移除低版本的合约}。低于0.4.11的Solidity版本与更新版本存在较大差异，且可能在将来被废弃。
-\end{enumerate}
+\end{itemize}
 
-通过上述方法，我们首先在BigQuery中得到了xxx个智能合约地址，在Etherscan上获得的经过验证的合约源代码共有xxx份，最后经过上述排除规则，我们总计得到了xxx份智能合约源代码用于下文的研究。
-\subsection{数据打标签}
-\label{sec:数据打标签}
-\textcolor{red}{这里可能要给数据集打标签}
+通过上述方法，我们首先在BigQuery中得到了\num{8183198}个智能合约地址，在Etherscan上获得的经过验证的合约源代码共有\num{133290}份，最后经过上述排除规则，我们总计得到了\num{54739}份智能合约源代码用于下文的研究。
+\subsection{数据集标注}
+\label{sec:数据集标注}
+% \textcolor{red}{这里可能要给数据集打标签}
+% 上文收集的数据集
+根据不同类别的漏洞的出现概率及其在现实世界的重要性，本文选择4种漏洞作为研究对象：权限控制、算数错误、重入漏洞以及未检查调用。由于当前没有途径或方法获得智能合约的绝对标签，因此本文只能借鉴已有工作\cite{yashavant2022scrawld}，利用多种现有的漏洞检测工具对每一份智能合约进行处理，得到其标签后，根据每种漏洞能被检测出来的工具数量，设置不同的检出阈值，即该漏洞被多少种检测工具确认后才将其标注为真。
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{pictures/dataset_labels}
+    \caption{\label{fig:dataset_labels}本文搜集的智能合约数据集中各种漏洞的数量}
+\end{figure}
+比如共有3种工具能检测出智能合约中的重入漏洞，那么针对重入漏洞的检出阈值就为2，即当有两种检测工具都检测出某合约包含重入漏洞时，本文才将其标注为包含重入漏洞。通过上述方法，本文采用了5种广泛使用的漏洞检测工具，即Slither、Mythril、Oyente、Osiris和SmartCheck，并参照论文\cite{yashavant2022scrawld}设置4种漏洞的检出阈值，使用SmartBugs智能合约分析框架\cite{smartbugs}完成数据集标注工作，最终得到的数据集的统计信息如\autoref{fig:dataset_labels}所示。
+% 由于当前没有高质量的已标注的智能合约源代码数据集，或者相关数据集中的源代码数量太少，因此本文需要自行标注搜集到的智能合约源代码。而当前
+
+
 \section{基于静态度量定义专家特征}
 \label{sec:基于静态度量定义专家特征}
 在软件质量保证（Software Quality Assurance，SQA）工作中，静态代码指标（如 Halstead\cite{halstead}指标、McCabe\cite{mccabe}指标）发挥着重要作用。许多方法都是基于静态代码指标提出的，先前的工作\cite{menzies2007data,meyers2007empirical,zimmermann2007predicting}也证实了这些指标对软件质量保证研究是有用的。因此，我们认为智能合约也可以从中获益，借助静态代码指标对合约进行漏洞检测和运行时崩溃研究。
@@ -50,50 +73,7 @@
 
 % 表\autoref{tab:metrics}显示了本文引入或定义的静态代码指标的概述，具体每个指标的含义将在下一小节阐述。
 
-% \begin{table}[htbp]
-%     \caption{\label{tab:metrics}本文引入或定义的静态代码指标}
-%     \small
-%             \renewcommand{\arraystretch}{1.5}
-%         \begin{tabularx}{\linewidth}{cX<{\raggedright}X<{\raggedright}}
-%             \hline
-%             \textbf{Dimension}            & \textbf{Metric}              & \textbf{Description} \\ \hline
-%             \multirow{6}{*}{代码复杂度指标} & 平均圈复杂度（AvgComplexity）        & 所有嵌套函数的平均严格圈复杂度 \\
-%                                        & 最大圈复杂度（MaxComplexity）        & 严格圈复杂度的最大值 \\
-%                                        & 最大继承深度（MaxInheritance）   & 合约继承树的最大深度 \\
-%                                        & 最大嵌套度（MaxNesting）           & 控制结构的最深嵌套级别 \\
-%                                        & 圈复杂度总和（SumComplexity）        & 所有嵌套函数的严格圈复杂度之和 \\
-%                                        & 合约耦合度（CountContractCoupled）  & 与当前合约存在耦合关系的合约数量 \\ \hline
-%             \multirow{6}{*}{计数度量} & 代码行数（CountLineCode）       & Solidity 源代码文件的总行数 \\
-%                                        & 可执行代码行数（CountLineCodeExe）     &  Solidity 源代码文件中的非空行和非注释行 \\
-%                                        & 注释行数（CountLineComment）     & Solidity 源代码文件中注释的总行数 \\
-%                                        & 语句数（CountStmt）            &  Solidity 源代码文件中可执行语句的数量 \\
-%                                        & 空行数（CountLineBlank）       & Solidity 源代码文件中的空行数 \\
-%                                        & 注释代码行数比（RatioCommentToCode）   & Solidity 源代码文件中注释行数与代码行数的比值 \\ \hline
-%             \multirow{10}{*}{面向对象维度} & 父合约个数（CountContractBase）    &  Solidity 文件中的主合约所继承的合约的数量 \\
-%                                        & 依赖合约个数（CountDependence）      & 直接依赖继承的父合约与间接依赖的父合约继承的合约总数 \\
-%                                        & 合约个数（CountContract）        & Solidity 源文件中定义的合约的数量 \\
-%                                        & 函数总数（CountTotalFunction）   & Number of stract functions including modifier functions. \\
-%                                        & 公共变量个数（CountFunctionPublic）  & Number of public variables. \\
-%                                        & 变量个数（CountVariable）        & Number of contract variables. \\
-%                                        & 私有函数个数（CountFunctionPrivate） & Number of private functions. \\
-%                                        & 内部函数个数（CountFunctionInternal） & Number of internal functions. \\
-%                                        & 外部函数个数（CountFunctionExternal） & Number of external functions. \\
-%                                        & 公开函数个数（CountPublicVariable）  & Number of public functions. \\ \hline
-%             \multirow{12}{*}{Solidity维度} & 接口数量（NOI）                 & Solidity 源文件中使用的接口总数 \\
-%                                        & 依赖库数量（NOL）                & Solidity 源文件中使用的库总数\\
-%                                        & 存储变量数（NOSV）                & 定义的存储变量总数 \\
-%                                        & 映射变量数（NOMap）              & 使用的映射类型总数 \\
-%                                        & 可支付函数数量（NOPay）               & Solidity 源文件中调用的可支付函数总数 \\
-%                                        & 事件数量（NOE）                 & Solidity 源文件中发生的事件总数 \\
-%                                        & 函数修改器数量（NOMod）               &  Solidity 源文件中调用的修改器总数 \\
-%                                        & 转账语句数（NOT）                 & 所有函数中执行的转账语句总数 \\
-%                                        & 信息调用数（NOC）                 & Solidity 源文件中消息调用次数总数 \\
-%                                        & 委托调用数（NODC）                & 所有函数中执行的委托调用总数 \\
-%                                        & 静态函数数量（NOSF）                & 静态函数数量，包括视图函数和纯函数 \\
-%                                        & 重写回调函数（SDFB）                & Solidity 源文件中是否重写了 fallback 函数 \\ \hline
-%         \end{tabularx}
-% \end{table}
-% \subsection{静态代码度量的四个维度}
+\subsection{静态代码度量的四个维度}
 \label{sec:静态代码度量的四个维度}
 \subsection{代码复杂度}
 \label{sec:代码复杂度}
@@ -113,20 +93,20 @@
 \end{enumerate}
 \subsection{计数维度}
 \label{sec:计数维度}
-计数度量（Count Metrics）用于从物理层面（如代码行数、空行数或注释行数）来表示代码特征，Gyimothy 等人\cite{gyimothy2005}证实了计数相关的指标在缺陷预测工作中的实用性。直观地说，一个程序的代码量越大，出现缺陷代码的概率就越高。本文引入了6个计数相关的度量指标：代码行数、可执行代码行数、注释行数、语句数、空行数、注释代码行数比。
-\begin{enumerate}[label=\Alph*., align=left, leftmargin=*]
-    \item \textbf{代码行数（CountLineCode）}。即Solidity源代码文件的总行数。
+计数度量（Count Metrics）用于从物理层面（如代码行数、空行数或注释行数）来表示代码特征，Gyimothy 等人\cite{gyimothy2005}证实了计数相关的指标在缺陷预测工作中的实用性。直观地说，一个程序的代码量越大，出现缺陷代码的概率就越高。本文引入了6个计数相关的度量指标：代码行数（CountLineCode）、可执行代码行数（CountLineCodeExe）、注释行数（CountLineComment）、语句数（CountStmt）、空行数（CountLineBlank）、注释代码行数比（RatioCommentToCode），这些指标均见名知义，故不再详细介绍。
+% \begin{enumerate}[label=\Alph*., align=left, leftmargin=*]
+%     \item \textbf{代码行数（CountLineCode）}。即Solidity源代码文件的总行数。
 
-    \item \textbf{可执行代码行数（CountLineCodeExe）}。可执行代码行数指标计算的是 Solidity 源代码文件中的非空行和非注释行。也就是说，只计算包含实际Solidity语句的行数。为了计算这个指标，我们逐行扫描源代码，过滤掉所有空行和注释行，得到 CountLineCodeExe 指标。在 Solidity 编程语言中，有两种注释源代码的方法：单行注释（"//"）和多行注释（"/*...*/"）。因此，我们认为所有以"/*"、"*"、"//"开头或以 "*/"结尾的行都是注释行。
+%     \item \textbf{可执行代码行数（CountLineCodeExe）}。可执行代码行数指标计算的是 Solidity 源代码文件中的非空行和非注释行。也就是说，只计算包含实际Solidity语句的行数。为了计算这个指标，我们逐行扫描源代码，过滤掉所有空行和注释行，得到 CountLineCodeExe 指标。在 Solidity 编程语言中，有两种注释源代码的方法：单行注释（"//"）和多行注释（"/*...*/"）。因此，我们认为所有以"/*"、"*"、"//"开头或以 "*/"结尾的行都是注释行。
     
-    \item \textbf{注释行数（CountLineComment）}。该指标可以在上述可执行代码行数指标的计算过程中得到。
+%     \item \textbf{注释行数（CountLineComment）}。该指标可以在上述可执行代码行数指标的计算过程中得到。
     
-    \item \textbf{语句数（CountStmt）}。即 Solidity 源代码文件中可执行语句的数量，可以从 Solidity 源代码对应的抽象语法树中计算语句定义的数量得到。
+%     \item \textbf{语句数（CountStmt）}。即 Solidity 源代码文件中可执行语句的数量，可以从 Solidity 源代码对应的抽象语法树中计算语句定义的数量得到。
     
-    \item \textbf{空行数（CountLineBlank）}。即 Solidity 源代码文件中的空行数。
+%     \item \textbf{空行数（CountLineBlank）}。即 Solidity 源代码文件中的空行数。
     
-    \item \textbf{注释代码行数比（RatioCommentToCode）}。即 Solidity 源代码文件中注释行数与代码行数的比值。
-\end{enumerate}
+%     \item \textbf{注释代码行数比（RatioCommentToCode）}。即 Solidity 源代码文件中注释行数与代码行数的比值。
+% \end{enumerate}
 \subsection{面向对象维度}
 \label{sec:面向对象维度}
 面向对象的度量指标用于从高层次角度描述源代码的质量。面向对象设计思想的核心是用对象来模拟现实世界，这与强调面向函数的、将数据和程序分开的传统程序设计方式截然不同。先前的工作\cite{martin1994oodesign,basili1996validation,KHAN20071}证实了面向对象度量指标在缺陷预测工作中比传统指标（如代码复杂度指标、计数指标）更有效。
@@ -180,27 +160,30 @@
 
 与AST不同的是，对于相同功能的程序，尽管各种语言的抽象语法不同，但数据流是相同的。以 $a=maxValue-minValue$ 为例，仅从变量a的名字是无法得知该变量值所代表的实际含义，但从数据流的角度来看，a的值来自maxValue和minValue的差，变量a的含义可能是一个数组的极差。
 
-另一方面，数据流图的引入可以让模型更加关注变量之间的直接依赖关系。以图xxx为例，有四个名称相同但语义不同的变量（x1,x2,x3,x4），图中展示了这些变量之间的依赖关系，并表明x4与x3的关系相比于x2更加紧密，这样就极有可能让模型更加关注变量x3的值，从而发现潜在的漏洞。
-如果用形式化语言表述，将从AST中得到的变量序列记为$V=\left\{v_1, v_2, \ldots, v_k\right\}$，将表明了数据流动方向的边的集合表示为$E=\left\{\varepsilon_1, \varepsilon_2, \ldots, \varepsilon_l\right\}$，那么图$\mathcal{G}(C)=(V, E)$表示源代码$C$中的数据流图。
+% 另一方面，数据流图的引入可以让模型更加关注变量之间的直接依赖关系。以图xxx为例，有四个名称相同但语义不同的变量（x1,x2,x3,x4），图中展示了这些变量之间的依赖关系，并表明x4与x3的关系相比于x2更加紧密，这样就极有可能让模型更加关注变量x3的值，从而发现潜在的漏洞。
+
+另一方面，数据流图的引入可以让模型更加关注变量之间的直接依赖关系。假如有四个名称相同但语义不同的变量$x$，按照其位置信息得到的变量序列为$\left\{x_1, x_2, x_3, x_4\right\}$，这表明$x_4$与$x_3$的关系相比于与$x_2$更加紧密，这样就会让模型更加关注变量$x_3$的值，从而可能发现潜在的漏洞。
+如果用形式化语言表述，将从AST中得到的变量序列记为$V=\left\{v_1, v_2, \ldots, v_k\right\}$，将表明了数据流动方向的边的集合表示为$E=\left\{\varepsilon_1, \varepsilon_2, \ldots, \varepsilon_l\right\}$，那么图$DFG(S)=(V, E)$表示源代码$S$中的数据流图。
 %%%%%%%%%%%%%%%%%%%% 如果需要时再增加这部分内容 %%%%%%%%%%%%%%%
-Wu等人在研究智能合约的重入漏洞时，提出了关键数据流图（Curcial Graph Flow Data，CDFG）的概念\cite{wu2021peculiar}。他们认为，智能合约的漏洞存在于几个关键语句中，整个数据流图中也只有部分信息对于漏洞检测任务有帮助。因此为了减少无用信息的干扰，他们通过剔除DFG中与漏洞无关的数据流关系，构建了关键数据流图，用来表达合约中与漏洞相关的关键语义信息。本文将沿用其思路与做法。
+Wu等人\cite{wu2021peculiar}在研究智能合约的重入漏洞时，提出了关键数据流图（Curcial Graph Flow Data，CDFG）的概念。他们认为，智能合约的漏洞存在于几个关键语句中，整个数据流图中也只有部分信息对于漏洞检测任务有帮助。因此为了减少无用信息的干扰，他们通过剔除DFG中与漏洞无关的数据流关系，构建了关键数据流图，用来表达合约中与漏洞相关的关键语义信息。本文将沿用其思路与做法。
 \subsection{控制流图}
 \label{sec:控制流图}
 
 控制流图（Control Flow Graph，CFG）是一个过程或程序逻辑的抽象表示，描述了程序在执行期间可能经过的所有路径。Allen于1970年提出控制流图的概念\cite{allencfg}，后来逐渐成为静态分析和编译器优化的重要工具。
 
-在控制流图中，节点表示一个基本代码块，既没有任何跳转指令的顺序执行的代码块，有向边表示程序的执行路径，在满足一定条件时，程序从一个基本代码块跳转到另一个基本代码块继续执行。
+在控制流图中，每个节点都表示一个基本代码块，即没有任何跳转指令的顺序执行的代码块，有向边表示程序的执行路径，在满足一定条件时，程序从一个基本代码块跳转到另一个基本代码块继续执行。控制流图可以帮助我们理解程序在运行时可能经过的所有路径，这对于理解程序的行为模式，以及寻找可能的逻辑错误或者漏洞等方面都有很大帮助。
 
-控制流图对应的是代码中的条件分支结构，在大多数高级编程语言中用if-else语句、while语句、for语句等表示。图xx表示了
+如果用形式化语言表述，将从AST中得到的代码块序列记为$B=\left\{b_1, b_2,\ldots, b_m\right\}$，程序可能的执行路径记为$E=\left\{\gamma_1, \gamma_2, \ldots, \gamma_n\right\}$，那么图$CFG(S)=(B, E)$表示源代码$S$中的控制流图。
 
-构建控制流图的方法：
+% 根据条件分支语句的判断条件
+
+控制流图对应的是代码中的条件分支结构，在大多数高级编程语言中用if-else语句、while语句、for语句等表示。%%%%%%%%%%%%%%\textcolor{red}{图xx表示了图xx中的智能合约生成的控制流图}。
+
+
 \subsection{函数调用图}
 \label{sec:函数调用图}
-函数调用图（Call Graph）是描述程序中函数互相调用关系的有向图，这是一种特殊的控制流图，其分支逻辑由函数调用实现。
+函数调用图（Function Call Graph）是描述函数之间互相调用关系的有向图，这是一种特殊的控制流图，其分支逻辑由函数调用实现。他们在理解源代码，尤其是复杂的代码结构时非常有用。在函数调用图中，节点代表函数，边则代表调用关系，如果函数A调用函数B，那么函数调用图中会有一条从A到B的有向边。根据函数的调用顺序和相互关系，形成了一种树状或网状的结构。在智能合约中，函数可以使用不同的权限修饰符（如public、internal等）或语义修饰符（如pure、payable等），因此在创建智能合约的函数调用图时，可以针对被调用函数的修饰符对函数调用图的边进行分类，以表示该调用关系中被调用函数的类型。
 
-在函数调用图中，每个节点均表示一个函数，有向边表示起点函数调用了终点函数。
-
-构建函数调用图的方法
-
+如果用形式化语言表述，从AST的执行语句（即非变量或函数的声明或定义语句，可以执行且影响相关变量的值的语句）提取的函数名称组成一个序列$F=\left\{f_1, f_2, \ldots, f_n\right\}$，函数之间的调用关系记为$E=\left\{\xi_1, \xi_2, \ldots, \zeta_1, \zeta_2, \ldots, \delta_1, \delta_2, \ldots\right\}$，其中$\xi, \zeta, \delta$分别表示针对上文中提到的不同类型函数的调用。%%%%%%%%%%%%%\textcolor{red}{图xx表示了智能合约生成的函数调用图}。
 
 
