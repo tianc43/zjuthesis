@@ -18,7 +18,7 @@
 \subsection{静态代码指标优化}
 在数据集方面，尽管\autoref{sec:基于静态度量定义专家特征}提出的34个静态代码指标能有效的表达程序的结构特征，但是对于智能合约运行时崩溃预测工作来说，有些指标对于合约执行逻辑的表达能力有限，因此本节特对34个静态代码指标中Solidity维度的指标进行补充，并且删去一些相关性不大的指标，最终得到了25个静态代码指标，具体如\autoref{tab:new_metrics}所示。
 \begin{table}[htbp]
-    \caption{\label{tab:new_metrics}现有的智能合约漏洞检测方法}
+    \caption{\label{tab:new_metrics}优化后的25个静态代码指标}
     \small
             \renewcommand{\arraystretch}{1.5}
         \begin{tabularx}{\linewidth}{cp{3.5cm}<{\centering}X<{\raggedright}}
@@ -90,7 +90,7 @@
 首先对交易执行失败的原因进行分析，从\autoref{fig:different_reasons}中可以看出，不同原因导致失败的交易在整个数据集中的分布并不均衡，其中占比最多的当属Reverted类型，紧接着是Gas不足，其次是无效操作码和无效跳转，堆栈溢出（上溢出或下溢出）占比非常之少，因此在相关的研究工作中可以忽略不计。对于其他四种导致交易失败的原因，本文且给出以下几点建议：
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=.7\linewidth]{pictures/different_reasons}
+    \includegraphics[width=.6\linewidth]{pictures/different_reasons}
     \caption{\label{fig:different_reasons}导致交易失败的不同原因在数据集中的分布情况}
 \end{figure}
 
