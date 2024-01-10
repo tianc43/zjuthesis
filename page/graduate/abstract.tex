@@ -1,37 +1,27 @@
 \cleardoublepage
 \chapternonum{摘要}
-包含漏洞的智能合约可能会导致严重的经济损失，对此已有许多漏洞检测方法被提出来。其中，深度学习法提供了一种高效的解决方案，其核心思想是提取智能合约的漏洞特征来训练深度学习模型，以实现检测漏洞的目的。然而现有工作大都只关注单一类型的特征，即仅使用专家特征或语义特征，少有工作同时考虑到这两种特征。另一方面，近年来兴起的预训练模型在漏洞检测任务中表现出色，而在智能合约领域鲜有应用。鉴于此，本文提出了一种全新的基于代码领域的预训练模型、并且融合专家特征和语义特征进行智能合约漏洞检测的方法。总体来说，本文的研究内容和结果如下所述：
+包含漏洞的智能合约可能会导致严重的经济损失，对此已有许多漏洞检测方法被提出来。其中，深度学习法提供了一种高效的解决方案，其核心思想是提取智能合约的漏洞特征来训练深度学习模型，以实现检测漏洞的目的。然而现有工作大都只关注单一类型的特征，即仅使用专家特征或语义特征，少有工作同时考虑到这两种特征。另一方面，近年来兴起的预训练模型在漏洞检测任务中表现出色，而在智能合约领域鲜有应用。鉴于此，本文提出了一种全新的基于代码领域的预训练模型、并且融合专家特征和语义特征进行智能合约漏洞检测的方法。总体来说，本文主要的研究内容和结果如下所述：
 
-    1）基于专家特征和语义特征融合的智能合约表征。
+首先，本文引入了34个静态代码指标，作为表达智能合约结构信息的专家特征，同时从 AST 中提取三种语义图作为智能合约的语义特征，然后融合两种特征开展漏洞检测研究。消融实验结果表明，静态代码指标和语义特征均可以在一定程度上提升漏洞检测效果，但后者的提升效果更为显著。
 
-    本文引入了34个静态代码指标，作为表达智能合约结构信息的专家特征，同时从 AST 中提取三种语义图作为智能合约的语义特征，然后融合两种特征开展漏洞检测研究。消融实验结果表明，当移除专家特征时，三种指标 Recall、Precision、F1-score 分别下降的百分比为 4.14\%、6.38\%、5.22\%， 这表明静态代码指标可以在一定程度上能提升漏洞检测效果；而当移除语义特征时，三种指标分别下降的百分比为 34.07\%、29.27\%、31.84\%，这表明语义信息可以显著提升智能合约漏洞检测效果。
-
-    2）基于预训练模型的智能合约漏洞检测方法研究。
+其次，本文使用了深度学习法对智能合约的静态代码指标和语义图进行嵌入，以生成高维向量表示。同时，以GraphCodeBERT模型作为基础训练智能合约漏洞检测模型，然后设计实验对本文提出的方法进行验证。结果表明，本文提出的方法能有效检测出智能合约中常见的算术漏洞、权限控制漏洞、重入漏洞和异常调用漏洞，并且在\num{54739}份智能合约上的评估指标Recall、Precision、F1-score分别达到了0.90、0.97、0.94，优于两种基线方法Slither和DR-GCN。
     
-    本文使用了深度学习法对智能合约的静态代码指标和语义图进行嵌入，以生成高维向量表示。同时，以GraphCodeBERT模型作为基础训练智能合约漏洞检测模型，然后设计实验对本文提出的方法进行验证，实验结果表明，本文提出的方法能有效检测出智能合约中常见的算术漏洞、权限控制漏洞、重入漏洞和异常调用漏洞，并且在\num{54739}份智能合约上的评估指标Recall、Precision、F1-score分别达到了0.90、0.97、0.94，优于另外两种基线方法Slither和DR-GCN。
-    
-    3）智能合约运行时崩溃预测方法研究。
-    
-    针对目前智能合约运行时崩溃导致交易失败的相关研究较少的情况，本文在上一步工作的基础上，利用漏洞检测模型对智能合约运行结果进行预测，实验结果表明本文的方法可以在一定程度上预测出智能合约在运行时是否会崩溃，评估指标Precision、Recall、F1-score分别为0.83、0.76、0.79。最后探究了智能合约的各种漏洞与运行时崩溃的关系，结果表明在本文研究的四种漏洞中，算术漏洞最有可能导致合约在运行时崩溃。
+此外，本文利用上一步得到的漏洞检测模型对智能合约运行结果进行预测，实验结果表明本文的方法可以在一定程度上预测出智能合约在运行时是否会崩溃，评估指标Precision、Recall、F1-score分别为0.83、0.76、0.79。最后探究了智能合约的各种漏洞与运行时崩溃的关系，结果表明在本文研究的四种漏洞中，算术漏洞最有可能导致合约在运行时崩溃。
 
 
+\hspace*{\fill}
 
-    {\noindent \textbf{关键词：} 智能合约、漏洞检测、深度学习}
+\noindent \textbf{关键词：} 漏洞检测，智能合约，深度学习
 \cleardoublepage
 \chapternonum{Abstract}
-Smart contracts containing vulnerabilities may lead to serious economic losses, for which many vulnerability detection methods have been proposed. Among them, deep learning methods provide an efficient solution, whose core idea is to extract vulnerability features of smart contracts to train deep learning models for the purpose of vulnerability detection. However, most of the existing works focus on a single type of features, i.e., using only expert features or semantic features, and few works consider both. On the other hand, pre-trained models that have emerged in recent years have performed well in vulnerability detection tasks, while few have been applied in the smart contract domain. In view of this, this paper proposes a novel approach to smart contract vulnerability detection based on pre-trained models in the code domain and fusing expert features and semantic features. Overall, the research content and results of this paper are described as follows:
+Smart contracts containing vulnerabilities may lead to serious economic losses, for which many vulnerability detection methods have been proposed. Among them, deep learning method provides an efficient solution, whose core idea is to extract vulnerability features of smart contracts to train deep learning models for the purpose of vulnerability detection. However, most of the existing works focus on a single type of features, i.e., using only expert features or semantic features, and few works consider both. On the other hand, pre-trained models, which have emerged in recent years, perform well in vulnerability detection tasks, whereas they have rarely been applied in the field of smart contracts. In view of this, this paper proposes a novel approach to smart contract vulnerability detection based on pre-trained models in the code domain and fusing expert features and semantic features. Overall, the main research content and results of this paper are described as follows:
 
-    1) Smart contract characterization based on the fusion of expert features and semantic features.
+First, this paper introduces 34 static code metrics as expert features to express the structural information of smart contracts, and extracts three semantic graphs from AST as semantic features of smart contracts, and then fuses the two features to carry out vulnerability detection research. The results of the ablation experiments show that both static code indicators and semantic features can improve the vulnerability detection effect to a certain extent, but the latter has a more significant improvement effect.
 
-    In this paper, 34 static code metrics are introduced as expert features to express the structural information of smart contracts, while three semantic graphs are extracted from AST as semantic features of smart contracts, and then the two features are fused to carry out the vulnerability detection research. The results of the ablation experiment show that when the expert features are removed, the percentages of the three metrics Recall, Precision, and F1-score decrease by 4.14\%, 6.38\%, 5.22\%, respectively, which indicates that the static code metrics can improve the vulnerability detection effect to a certain extent; and when the semantic features are removed, the percentages of the three metrics decrease by 34.07\%, 29.27\%, 31.84\%, which indicates that semantic information can significantly improve the vulnerability detection effect of smart contracts.
-
-    2) Research on smart contract vulnerability detection method based on pre-trained model.
+Secondly, this paper uses a deep learning method to embed static code metrics and semantic graphs of smart contracts to generate high-dimensional vector representations. Meanwhile, the GraphCodeBERT model is used as the basis to train the smart contract vulnerability detection model, and then experiments are designed to validate the method proposed in this paper. The results show that the method proposed in this paper can effectively detect common arithmetic vulnerabilities, privilege control vulnerabilities, re-entry vulnerabilities, and anomalous call vulnerabilities in smart contracts, and the evaluation metrics Recall, Precision, and F1-score on \num{54739} smart contracts reach 0.90, 0.97, and 0.94, respectively, which is better than two baseline methods Slither and DR-GCN.
     
-    In this paper, a deep learning method is used to embed static code metrics and semantic graphs of smart contracts to generate high-dimensional vector representations. At the same time, the GraphCodeBERT model is used as the basis to train the smart contract vulnerability detection model, and then experiments are designed to validate the method proposed in this paper. The experimental results show that the method proposed in this paper can effectively detect common arithmetic vulnerabilities, privilege control vulnerabilities, re-entry vulnerabilities and abnormal call vulnerabilities in smart contracts, and the evaluation on the \num{54739} smart contract metrics Recall, Precision, and F1-score reach 0.90, 0.97, and 0.94 respectively, which are better than the other two baseline methods Slither and DR-GCN.
-    
-    3) Research on smart contract runtime crash prediction methods.
-    
-    Aiming at the current situation that there are fewer studies related to transaction failure caused by smart contract crash at runtime, this paper, on the basis of the previous work, utilizes the vulnerability detection model to predict the result of smart contract operation, and the experimental results show that the method in this paper can predict to a certain extent whether the smart contract will crash at runtime, and the evaluation indexes Precision, Recall, F1-score are 0.83, 0.76, and 0.79, respectively.Finally, the relationship between various vulnerabilities of smart contracts and runtime crashes is explored, and the results show that among the four types of vulnerabilities studied in this paper, arithmetic vulnerabilities are the most likely to lead to the crash of the contract at runtime.
+In addition, this paper utilizes the vulnerability detection model obtained in the previous step to predict the smart contract runtime results, and the experimental results show that the method in this paper can predict whether the smart contract will crash at runtime to some extent, and the evaluation metrics Precision, Recall, and F1-score reach 0.83, 0.76, and 0.79, respectively.Finally, we explore the various vulnerabilities of the smart contract with runtime crash, and the results show that among the four vulnerabilities studied in this paper, arithmetic vulnerability is most likely to cause the contract to crash at runtime.
 
+\hspace*{\fill}
 
-    {\noindent \textbf{Key words: } Smart Contracts, Vulnerability Detection、Deep Learning}
+\noindent \textbf{Key words: } Vulnerability Detection, Smart Contracts, Deep Learning
