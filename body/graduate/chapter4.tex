@@ -389,10 +389,10 @@ F1值是精确率与召回率的调和平均值，用于同时考虑精确率和
     \begin{tabularx}{\linewidth}{p{1.3cm}|X<{\centering}X<{\centering}X<{\centering}|X<{\centering}X<{\centering}X<{\centering}|X<{\centering}X<{\centering}X<{\centering}|X<{\centering}X<{\centering}X<{\centering}}
         \hline
         \multirow{2}{*}{方法} & \multicolumn{3}{c|}{算术漏洞(\%)} & \multicolumn{3}{c|}{权限控制漏洞(\%)} & \multicolumn{3}{c|}{重入漏洞(\%)} & \multicolumn{3}{c}{异常调用漏洞(\%)} \\ \cline{2-13} 
-                            & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c|}{F1} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c|}{F1} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c|}{F1} & \multicolumn{1}{c}{Recall} & \multicolumn{1}{c}{Precision} & \multicolumn{1}{c}{F1} \\ \hline
-        Slither & 68.92 & 72.47 & 65.11       & 73.23 & 78.91 & 73.01       & 76.90 & 78.04 & 77.98       & 67.93 & 68.52 & 66.31      \\
-        DR-GCN & 80.43 & 84.27 & 79.35       & \textbf{89.80} & 86.59 & \textbf{85.32} & 82.50 & 79.37 & 78.14       & 74.25 & 79.12 & 77.40      \\
-        本文      & \textbf{98.40} & \textbf{97.51}    & \textbf{97.93} & 71.84 & \textbf{96.97}    & 82.58       & \textbf{94.63} & \textbf{97.04}    & \textbf{95.82} & \textbf{95.40} & \textbf{98.32}    & \textbf{96.52}         \\ \hline
+                            & {Recall} & {Precision} & \multicolumn{1}{c|}{F1} & {Recall} & {Precision} & \multicolumn{1}{c|}{F1} & {Recall} & {Precision} & \multicolumn{1}{c|}{F1} & {Recall} & {Precision} & {F1} \\ \hline
+        Slither & 68.92 & 72.47 & 70.65       & 73.23 & 78.91 & 75.96       & 76.90 & 78.04 & 77.47       & 67.93 & 68.52 & 68.22      \\
+        DR-GCN & 80.43 & 84.27 & 82.31       & \textbf{89.80} & 86.59 & \textbf{88.17} & 82.50 & 79.37 & 80.90       & 74.25 & 79.12 & 76.61      \\
+        本文      & \textbf{98.40} & \textbf{97.51}    & \textbf{97.95} & 71.84 & \textbf{96.97}    & 82.53       & \textbf{94.63} & \textbf{97.04}    & \textbf{95.82} & \textbf{95.40} & \textbf{98.32}    & \textbf{96.84}         \\ \hline
         \end{tabularx}
 \end{table}
 
@@ -400,7 +400,7 @@ F1值是精确率与召回率的调和平均值，用于同时考虑精确率和
 
 1）本方法在算术漏洞检测上的效果显著优于其它两种方法，这很大可能与本方法中引入了数据流图有关，因为数据流图表示了变量的值来自哪一个变量，可以比较好地跟踪到超出数据范围的值或者除数为0类似的错误。
 
-2）对于权限控制漏洞的检测，尽管本方法的Recall为71.84\%，相对较低，但是Precision为96.97\%，而且F1-score为82.58\%，超过了Slither而低于DR-GCN。可以看出，本方法在权限控制漏洞检测时可能会有一些漏报，但报告的结果精确度很高。这可能是因为本方法在检测时更为谨慎，只有当模型非常确定的时候才会标注为漏洞，这样虽然可能会错过一些真正的漏洞（也就是Recall较低），但是可以减少误报，使得被模型标记的漏洞大部分都是真正的漏洞，从而提高了精准度。
+2）对于权限控制漏洞的检测，尽管本方法的Recall为71.84\%，相对较低，但是Precision为96.97\%，而且F1-score为82.53\%，超过了Slither而低于DR-GCN。可以看出，本方法在权限控制漏洞检测时可能会有一些漏报，但报告的结果精确度很高。这可能是因为本方法在检测时更为谨慎，只有当模型非常确定的时候才会标注为漏洞，这样虽然可能会错过一些真正的漏洞（也就是Recall较低），但是可以减少误报，使得被模型标记的漏洞大部分都是真正的漏洞，从而提高了精准度。
 
 3）对于重入漏洞和异常调用漏洞，本方法在三个指标上的表现均优于其他两个方法，合理推测，这可能与基于静态代码指标的专家特征以及控制流图和函数调用图有关，前者能很好地表达智能合约的结构特征，后者将智能合约的程序执行路径和函数调用输入模型，最终模型能学习到此类语义的表示，从而能识别出未知合约中类似的语义信息。
 
@@ -426,9 +426,9 @@ F1值是精确率与召回率的调和平均值，用于同时考虑精确率和
         \hline
         方法 & Recall*(\%) & Precision*(\%) & F1-score*(\%) \\
         \hline
-        本方法 & \textbf{90.07} & \textbf{97.46} & \textbf{93.21} \\
-        移除专家特征 & 86.34 & 91.24 & 89.72 \\
-        移除语义特征 & 59.38 & 68.93 & 64.28 \\
+        本方法 & \textbf{90.07} & \textbf{97.46} & \textbf{93.61} \\
+        移除专家特征 & 86.34 & 91.24 & 88.72 \\
+        移除语义特征 & 59.38 & 68.93 & 63.80 \\
         \hline
     \end{tabularx}
     }
@@ -439,7 +439,7 @@ F1值是精确率与召回率的调和平均值，用于同时考虑精确率和
     \end{tablenotes}
 \end{threeparttable}
 \end{table}
-从\autoref{tab:ablation_result}中可以看出，当移除专家特征时，三种指标Recall、Precision、F1-score分别下降的百分比为4.12\%、6.06\%、3.86\%，这表明静态代码指标可以在一定程度上反映合约的结构信息，能提升漏洞检测效果，但提升效果并不显著。当移除语义特征只使用专家特征时，三种指标分别下降的百分比为34.06\%、29.35\%、31.08\%，这表明语义信息可以显著提高模型对智能合约的学习能力，提升智能合约漏洞检测效果。
+从\autoref{tab:ablation_result}中可以看出，当移除专家特征时，三种指标Recall、Precision、F1-score分别下降的百分比为4.14\%、6.38\%、5.22\%，这表明静态代码指标可以在一定程度上反映合约的结构信息，能提升漏洞检测效果，但提升效果并不显著。当移除语义特征只使用专家特征时，三种指标分别下降的百分比为34.07\%、29.27\%、31.84\%，这表明语义信息可以显著提高模型对智能合约的学习能力，提升智能合约漏洞检测效果。
 
 % 移除专家特征时的下降百分比：
 

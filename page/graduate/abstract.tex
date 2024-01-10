@@ -4,11 +4,11 @@
 
     1）基于专家特征和语义特征融合的智能合约表征。
 
-    本文引入了34个静态代码指标，作为表达智能合约结构信息的专家特征，同时从 AST 中提取三种语义图作为智能合约的语义特征，然后融合两种特征开展漏洞检测研究。消融实验结果表明，当移除专家特征时，三种指标 Recall、Precision、F1-score 分别下降的百分比为 4.12\%、6.06\%、5.86\%， 这表明静态代码指标可以在一定程度上能提升漏洞检测效果；而当移除语义特征时，三种指标分别下降的百分比为 34.06\%、29.35\%、31.08\%，这表明语义信息可以显著提升智能合约漏洞检测效果。
+    本文引入了34个静态代码指标，作为表达智能合约结构信息的专家特征，同时从 AST 中提取三种语义图作为智能合约的语义特征，然后融合两种特征开展漏洞检测研究。消融实验结果表明，当移除专家特征时，三种指标 Recall、Precision、F1-score 分别下降的百分比为 4.14\%、6.38\%、5.22\%， 这表明静态代码指标可以在一定程度上能提升漏洞检测效果；而当移除语义特征时，三种指标分别下降的百分比为 34.07\%、29.27\%、31.84\%，这表明语义信息可以显著提升智能合约漏洞检测效果。
 
     2）基于预训练模型的智能合约漏洞检测方法研究。
     
-    本文使用了深度学习法对智能合约的静态代码指标和语义图进行嵌入，以生成高维向量表示。同时，以GraphCodeBERT模型作为基础训练智能合约漏洞检测模型，然后设计实验对本文提出的方法进行验证，实验结果表明，本文提出的方法能有效检测出智能合约中常见的算术漏洞、权限控制漏洞、重入漏洞和异常调用漏洞，并且在\num{54739}份智能合约上的评估指标Recall、Precision、F1-score分别达到了0.90、0.97、0.93，优于另外两种基线方法Slither和DR-GCN。
+    本文使用了深度学习法对智能合约的静态代码指标和语义图进行嵌入，以生成高维向量表示。同时，以GraphCodeBERT模型作为基础训练智能合约漏洞检测模型，然后设计实验对本文提出的方法进行验证，实验结果表明，本文提出的方法能有效检测出智能合约中常见的算术漏洞、权限控制漏洞、重入漏洞和异常调用漏洞，并且在\num{54739}份智能合约上的评估指标Recall、Precision、F1-score分别达到了0.90、0.97、0.94，优于另外两种基线方法Slither和DR-GCN。
     
     3）智能合约运行时崩溃预测方法研究。
     
@@ -23,11 +23,11 @@ Smart contracts containing vulnerabilities may lead to serious economic losses, 
 
     1) Smart contract characterization based on the fusion of expert features and semantic features.
 
-    In this paper, 34 static code metrics are introduced as expert features to express the structural information of smart contracts, while three semantic graphs are extracted from AST as semantic features of smart contracts, and then the two features are fused to carry out the vulnerability detection research. The results of the ablation experiment show that when the expert features are removed, the percentages of the three metrics Recall, Precision, and F1-score decrease by 4.12\%, 6.06\%, and 5.86\%, respectively, which indicates that the static code metrics can improve the vulnerability detection effect to a certain extent; and when the semantic features are removed, the percentages of the three metrics decrease by 34.06\%, 29.35\%, 31.08\%, which indicates that semantic information can significantly improve the vulnerability detection effect of smart contracts.
+    In this paper, 34 static code metrics are introduced as expert features to express the structural information of smart contracts, while three semantic graphs are extracted from AST as semantic features of smart contracts, and then the two features are fused to carry out the vulnerability detection research. The results of the ablation experiment show that when the expert features are removed, the percentages of the three metrics Recall, Precision, and F1-score decrease by 4.14\%, 6.38\%, 5.22\%, respectively, which indicates that the static code metrics can improve the vulnerability detection effect to a certain extent; and when the semantic features are removed, the percentages of the three metrics decrease by 34.07\%, 29.27\%, 31.84\%, which indicates that semantic information can significantly improve the vulnerability detection effect of smart contracts.
 
     2) Research on smart contract vulnerability detection method based on pre-trained model.
     
-    In this paper, a deep learning method is used to embed static code metrics and semantic graphs of smart contracts to generate high-dimensional vector representations. At the same time, the GraphCodeBERT model is used as the basis to train the smart contract vulnerability detection model, and then experiments are designed to validate the method proposed in this paper. The experimental results show that the method proposed in this paper can effectively detect common arithmetic vulnerabilities, privilege control vulnerabilities, re-entry vulnerabilities and abnormal call vulnerabilities in smart contracts, and the evaluation on the \num{54739} smart contract metrics Recall, Precision, and F1-score reach 0.90, 0.97, and 0.93 respectively, which are better than the other two baseline methods Slither and DR-GCN.
+    In this paper, a deep learning method is used to embed static code metrics and semantic graphs of smart contracts to generate high-dimensional vector representations. At the same time, the GraphCodeBERT model is used as the basis to train the smart contract vulnerability detection model, and then experiments are designed to validate the method proposed in this paper. The experimental results show that the method proposed in this paper can effectively detect common arithmetic vulnerabilities, privilege control vulnerabilities, re-entry vulnerabilities and abnormal call vulnerabilities in smart contracts, and the evaluation on the \num{54739} smart contract metrics Recall, Precision, and F1-score reach 0.90, 0.97, and 0.94 respectively, which are better than the other two baseline methods Slither and DR-GCN.
     
     3) Research on smart contract runtime crash prediction methods.
     
