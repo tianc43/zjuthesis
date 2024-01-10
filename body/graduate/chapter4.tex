@@ -20,7 +20,7 @@
 \begin{table}[htbp]
     \caption{\label{tab:dataset_statistics}本数据集静态代码指标的统计信息}
     \small
-    \renewcommand{\arraystretch}{1.5}
+    \renewcommand{\arraystretch}{1.3}
     \begin{tabularx}{\linewidth}
         {p{3cm}<{\centering}X<{\centering}X<{\centering}p{1.5cm}<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}}
     \hline
@@ -187,14 +187,14 @@
 
 \subsection{模型架构}
 \label{sec:模型架构}
-本文遵循GraphCodeBERT模型的基本架构，即采用多层双向Transformer作为模型主干。与之不同的是，我们将在模型训练阶段融入更多的代码结构和语义信息。\autoref{fig:graphcodebert}显示了本文采用的模型架构。%%%%%%%%%%%%%%%\textcolor{red}{这里描述一下模型的架构}
+本文遵循GraphCodeBERT模型的基本架构，即采用多层双向Transformer作为模型主干。与之不同的是，我们将在模型训练阶段融入更多的代码结构和语义信息。\autoref{fig:model_full}显示了本文采用的模型架构。%%%%%%%%%%%%%%%\textcolor{red}{这里描述一下模型的架构}
 
 
 具体来说，给定源代码$S=\{s_{1},s_{2},...,s_{n}\}$，可以利用\autoref{sec:构建语义图}中描述的方法构建三种智能合约语义图，首先是数据流图$DFG(S)=(Var,DFG\_Edge)$，其中$Var=\{v_1,v_2,\ldots,v_k\}$是智能合约$S$的变量集合，$DFG\_Edge=\{\epsilon_1,\epsilon_2,~\ldots,~\epsilon_l\}$是有向边，表示每个变量的值来自哪里；然后是函数调用图$FCG(S)=(Func,FCG\_Edge)$，$Func=\{f_1,f_2,\ldots,f_s\}$是智能合约的函数集合，$FCG\_Edge=\{\zeta_1,\zeta_2,~\ldots,~\zeta_l\}$是有向边，表示合约内不同函数的调用关系；最后还有控制流图$CFG(S)=(Block,CFG\_Edge)$，其中$Block=\{b_1,b_2,\ldots,b_t\}$表示合约内的基本代码块（即不含分支语句，可以顺序执行的代码），$CFG\_Edge=\{\iota_1,\iota_2,~\ldots,~\iota_l\}$表示是有向边，表示合约的执行路径。然后，遵循GraphCodeBERT模型的思路，将源代码和三种语义信息拼接成一个序列$I=\{[CLS],S,[SEP],Var,[SEP],Func,[SEP],Block\}$，其中$[CLS]$是每个输入序列前的特殊标记，$[SEP]$是不同数据段之间的分隔符。
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=.98\linewidth]{pictures/graphcodebert}
-    \caption{\label{fig:graphcodebert}本文采用的模型架构}
+    \includegraphics[width=.98\linewidth]{pictures/model_full}
+    \caption{\label{fig:model_full}本文采用的模型架构}
 \end{figure}
 
 下一步是将输入序列$I$转换为输入向量$H^0$。主要方法是，先对输入序列中的每个token生成嵌入向量（Embedding），然后将之与该token的位置嵌入向量相加，最终得到整个序列的输入向量。具体地，对于源代码$S$中的每个token，它的位置嵌入向量由该token在源代码中所处的位置序号生成；对于$Var$、$Func$、$Block$中的token，需要使用特殊的标记符生成位置嵌入向量，以此来表示他们是语义图中的节点，而非源代码中的字段。
