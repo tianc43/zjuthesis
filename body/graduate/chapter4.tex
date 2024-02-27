@@ -5,7 +5,7 @@
 % 本章主要介绍了基于GraphCodeBERT模型的智能合约漏洞检测方法，并实验设计与结果。
 \section{方法概述}
 \label{sec:方法概述}
-预训练模型可以学习并理解复杂的程序结构，并且具有跨语言通用性，大量工作表明预训练模型在漏洞检测任务中表现出色\cite{pretrained_is_good_1,pretrained_is_good_2,pretrained_is_good_3}。同时，Wu等人的研究表明预训练模型在识别智能合约的重入漏洞方面，明显优于当时最先进的方法\cite{wu2021peculiar}。遵循上述思路，本文拟采用GraphCodeBert模型为基础进行智能合约的漏洞检测研究。总的来说，本文的研究方法主要包含以下几个步骤：\textcircled{1}计算专家特征。依据\autoref{sec:基于静态度量定义专家特征}描述的专家特征，从静态代码分析的角度对智能合约进行表示。\textcircled{2}构建语义图。依据\autoref{sec:基于合约语义图提取语义特征}描述的三种语义图，提取智能合约的语义信息。\textcircled{3}基于GraphCodeBERT训练漏洞检测模型。以GraphCodeBERT模型为基础，融合前两步生成的专家特征和语义信息训练漏洞检测模型。\autoref{fig:framework2}是该方法的示意图。接下来，本文将逐一介绍上述三个步骤。
+Ni等人\cite{bestofboth}曾探究了融合专家特征和语义特征在识别和定位缺陷提交工作中的有效性，并构建了统一的模型JIT-Fine用于即时缺陷预测和定位，实验结果表明，JIT-Fine在10项性能指标上均优于当下所有最先进的基线方法。受此启发，本文将尝试融合智能合约的专家特征和语义特征用于漏洞检测。另一方面，预训练模型可以学习并理解复杂的程序结构，并且具有跨语言通用性，大量工作表明预训练模型在漏洞检测任务中表现出色\cite{pretrained_is_good_1,pretrained_is_good_2,pretrained_is_good_3}。同时，Wu等人的研究表明预训练模型在识别智能合约的重入漏洞方面，明显优于当时最先进的方法\cite{wu2021peculiar}。遵循上述思路，本文拟采用GraphCodeBert模型为基础进行智能合约的漏洞检测研究。总的来说，本文的研究方法主要包含以下几个步骤：\textcircled{1}计算专家特征。依据\autoref{sec:基于静态度量定义专家特征}描述的专家特征，从静态代码分析的角度对智能合约进行表示。\textcircled{2}构建语义图。依据\autoref{sec:基于合约语义图提取语义特征}描述的三种语义图，提取智能合约的语义信息。\textcircled{3}基于GraphCodeBERT训练漏洞检测模型。以GraphCodeBERT模型为基础，融合前两步生成的专家特征和语义信息训练漏洞检测模型。\autoref{fig:framework2}是该方法的示意图。接下来，本文将逐一介绍上述三个步骤。
 \begin{figure}[htbp]
     \centering
     \includegraphics[width= \linewidth]{pictures/framework2}
@@ -22,43 +22,43 @@
     \small
     \renewcommand{\arraystretch}{1.3}
     \begin{tabularx}{\linewidth}
-        {p{3cm}<{\centering}X<{\centering}X<{\centering}p{1.5cm}<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}}
+        {p{3cm}<{\centering}X<{\centering}p{1.5cm}<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}}
     \hline
-    \textbf{指标}                    & \textbf{平均值}    & \textbf{标准差}    & \textbf{最小值} & \textbf{第一四分位数} & \textbf{中位数}  & \textbf{第三四分位数} & \textbf{最大值}   \\ \hline
-    AvgCyclomatic         & 1.34   & 0.66   & 0   & 1.05   & 1.15 & 1.47   & 63.20 \\
-    MaxCyclomatic         & 3.64   & 5.96   & 0   & 2      & 2    & 4      & 611   \\
-    MaxInheritanceTree    & 1.47   & 1.32   & 0   & 0      & 1    & 2      & 10    \\
-    MaxNesting            & 1.45   & 1.82   & 0   & 1      & 1    & 2      & 125   \\
-    SumCyclomatic         & 29.72  & 33.53  & 0   & 12     & 18   & 33     & 632   \\
-    CountContractCoupled  & 0.53   & 0.88   & 0   & 0      & 0    & 1      & 17    \\ \hline
-    CountLineCode         & 348.61 & 434.73 & 2   & 132    & 223  & 394    & 11706 \\
-    CountLineCodeExe      & 198.07 & 240.90 & 2   & 77     & 118  & 224    & 5196  \\
-    CountLineComment      & 97.11  & 183.53 & 0   & 17     & 56   & 112    & 9347  \\
-    CountStmt             & 78.06  & 90.96  & 0   & 29     & 47   & 88     & 1424  \\
-    CountLineBlank        & 59.09  & 76.56  & 0   & 20     & 37   & 67     & 3711  \\
-    RatioCommentToCode    & 0.24   & 0.15   & 0   & 0.12   & 0.26 & 0.35   & 0.95  \\ \hline
-    CountContractBase     & 4.43   & 3.79   & 0   & 2      & 3    & 5      & 80    \\
-    CountDependence       & 3.01   & 2.98   & 0   & 1      & 2    & 4      & 32    \\
-    CountContract         & 4.43   & 3.79   & 0   & 2      & 3    & 5      & 80    \\
-    CountTotalFunction    & 26.71  & 26.42  & 0   & 13     & 30   & 30     & 835   \\
-    CountPublicVariable   & 9.15   & 8.72   & 0   & 5      & 7    & 10     & 208   \\
-    CountVariable         & 12.64  & 11.32  & 0   & 7      & 9    & 14     & 212   \\
-    CountFunctionPrivate  & 0.59   & 2.37   & 0   & 0      & 0    & 0      & 64    \\
-    CountFunctionlnternal & 5.09   & 11.34  & 0   & 0      & 4    & 5      & 629   \\
-    CountFunctionExternal & 1.86   & 7.04   & 0   & 0      & 0    & 1      & 280   \\
-    CountFunctionPublic   & 19.16  & 16.66  & 0   & 9      & 15   & 24     & 308   \\ \hline
-    NOI                   & 0.21   & 0.69   & 0   & 0      & 0    & 0      & 16    \\
-    NOL                   & 0.63   & 0.92   & 0   & 0      & 1    & 1      & 27    \\
-    NOSV                  & 16.31  & 21.11  & 0   & 7      & 10   & 17     & 1367  \\
-    NOMap                 & 3.40   & 3.10   & 0   & 3      & 3    & 4      & 89    \\
-    NOPay                 & 1.12   & 1.87   & 0   & 0      & 1    & 1      & 33    \\
-    NOE                   & 4.31   & 4.23   & 0   & 2      & 3    & 6      & 76    \\
-    NOMod                 & 1.95   & 2.56   & 0   & 0      & 1    & 3      & 49    \\
-    NOT                   & 1.30   & 2.03   & 0   & 0      & 1    & 2      & 56    \\
-    NOC                   & 0.10   & 0.40   & 0   & 0      & 0    & 0      & 13    \\
-    NODC                  & 0.00   & 0.12   & 0   & 0      & 0    & 0      & 16    \\
-    NOSF                  & 9.51   & 11.50  & 0   & 4      & 8    & 11     & 395   \\
-    SDFB                  & 0.51   & 0.50   & 0   & 0      & 1    & 1      & 1     \\ \hline
+    \textbf{指标}                    & \textbf{平均值}   & \textbf{最小值} & \textbf{第一四分位数} & \textbf{中位数}  & \textbf{第三四分位数} & \textbf{最大值}   \\ \hline
+    AvgCyclomatic         & 1.34        & 0   & 1.05   & 1.15 & 1.47   & 63.20 \\
+    MaxCyclomatic         & 3.64        & 0   & 2      & 2    & 4      & 611   \\
+    MaxInheritanceTree    & 1.47        & 0   & 0      & 1    & 2      & 10    \\
+    MaxNesting            & 1.45        & 0   & 1      & 1    & 2      & 125   \\
+    SumCyclomatic         & 29.72      & 0   & 12     & 18   & 33     & 632   \\
+    CountContractCoupled  & 0.53        & 0   & 0      & 0    & 1      & 17    \\ \hline
+    CountLineCode         & 348.61    & 2   & 132    & 223  & 394    & 11706 \\
+    CountLineCodeExe      & 198.07    & 2   & 77     & 118  & 224    & 5196  \\
+    CountLineComment      & 97.11     & 0   & 17     & 56   & 112    & 9347  \\
+    CountStmt             & 78.06      & 0   & 29     & 47   & 88     & 1424  \\
+    CountLineBlank        & 59.09      & 0   & 20     & 37   & 67     & 3711  \\
+    RatioCommentToCode    & 0.24        & 0   & 0.12   & 0.26 & 0.35   & 0.95  \\ \hline
+    CountContractBase     & 4.43        & 0   & 2      & 3    & 5      & 80    \\
+    CountDependence       & 3.01        & 0   & 1      & 2    & 4      & 32    \\
+    CountContract         & 4.43        & 0   & 2      & 3    & 5      & 80    \\
+    CountTotalFunction    & 26.71      & 0   & 13     & 30   & 30     & 835   \\
+    CountPublicVariable   & 9.15        & 0   & 5      & 7    & 10     & 208   \\
+    CountVariable         & 12.64      & 0   & 7      & 9    & 14     & 212   \\
+    CountFunctionPrivate  & 0.59        & 0   & 0      & 0    & 0      & 64    \\
+    CountFunctionlnternal & 5.09       & 0   & 0      & 4    & 5      & 629   \\
+    CountFunctionExternal & 1.86        & 0   & 0      & 0    & 1      & 280   \\
+    CountFunctionPublic   & 19.16      & 0   & 9      & 15   & 24     & 308   \\ \hline
+    NOI                   & 0.21        & 0   & 0      & 0    & 0      & 16    \\
+    NOL                   & 0.63        & 0   & 0      & 1    & 1      & 27    \\
+    NOSV                  & 16.31      & 0   & 7      & 10   & 17     & 1367  \\
+    NOMap                 & 3.40        & 0   & 3      & 3    & 4      & 89    \\
+    NOPay                 & 1.12        & 0   & 0      & 1    & 1      & 33    \\
+    NOE                   & 4.31        & 0   & 2      & 3    & 6      & 76    \\
+    NOMod                 & 1.95        & 0   & 0      & 1    & 3      & 49    \\
+    NOT                   & 1.30        & 0   & 0      & 1    & 2      & 56    \\
+    NOC                   & 0.10        & 0   & 0      & 0    & 0      & 13    \\
+    NODC                  & 0.00        & 0   & 0      & 0    & 0      & 16    \\
+    NOSF                  & 9.51       & 0   & 4      & 8    & 11     & 395   \\
+    SDFB                  & 0.51        & 0   & 0      & 1    & 1      & 1     \\ \hline
 \end{tabularx}
 \end{table}
 % 因此，我们在表 2 中列出了所研究合约的摘要。第一行显示了我们要分析的内容，包括从 Etherscan 上收集的 50994 个源代码文件（.sol 文件）中的智能合约、库、接口、事件、修改器和 LOC。如表所示，我们共分析了 225,918 份子合约（包括主合约及其附属合约）、32,165 个库、10,927 个接口、219,657 个事件、99,395 个修改器和 17,776,799 个 LOC。第二行显示的是每个 Solidity 源代码文件的平均统计信息。
@@ -296,7 +296,7 @@ head_i=\text{softmax}(\frac{\mathrm{Q_iK_i^T}}{\sqrt{\mathrm{d_k}}}+\mathrm{M})\
         \end{tabularx}
 \end{table}
 
-本文采用的模型骨干是12层Transformer结构，其中相关的超参数设定如\autoref{tab:super_parameters}所示。
+本实验采用的模型骨干是12层Transformer结构，具有 768 维隐藏状态和 12 个注意力头。参考论文\cite{guo2020graphcodebert}，设置本实验中源代码序列的最大长度为512，数据流序列的最大长度为64，控制流和函数调用序列的最大长度均为32，其余深度学习参数均遵循PyTorch和TensorFlow框架的默认值\footnote{https://pytorch.org/docs/stable/index.html}\footnote{https://www.tensorflow.org/api\_docs/python/tf}。\autoref{tab:super_parameters}展示了本实验中的一些关键超参数。
 \begin{table}[htbp]
     \caption{\label{tab:super_parameters}现有工作中的超参数设定}
     \small
@@ -305,7 +305,7 @@ head_i=\text{softmax}(\frac{\mathrm{Q_iK_i^T}}{\sqrt{\mathrm{d_k}}}+\mathrm{M})\
         \Xhline{2\arrayrulewidth}
         参数                            & 参数值  \\ \hline
         源代码序列最大长度（code\_length）                  & 512  \\
-        数据流序列最大长度（data\_flow\_length）            & 128   \\
+        数据流序列最大长度（data\_flow\_length）            & 64   \\
         控制流序列最大长度（control\_flow\_length）            & 32   \\
         函数调用序列最大长度（call\_flow\_length）            & 32   \\
         训练批大小（train\_batch\_size）            & 8    \\
