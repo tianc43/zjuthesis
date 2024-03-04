@@ -2,8 +2,7 @@
 
 \section{数据搜集与预处理}
 \label{sec:数据搜集与预处理}
-\subsection{数据搜集}
-\label{sec:数据搜集}
+
 本文拟使用深度学习方法进行智能合约漏洞检测和运行时崩溃相关的研究，需要使用大量的智能合约源代码作为训练模型的数据集，而现有的相关工作中使用的数据集或多或少存在一些问题，如智能合约数量太少、Solidity版本过低、没有标注等，\autoref{tab:present_dataset_statistics}显示了现有的智能合约数据集的统计信息。
 \begin{table}[htbp]
     \caption{\label{tab:present_dataset_statistics}现有工作中使用的数据集的统计信息}
@@ -20,8 +19,10 @@
     \end{tabularx}
 \end{table}
 另一方面，Solidity语言的更新会修复一些低版本智能合约中的漏洞，以太坊虚拟机的更新也会减少智能合约出现运行时异常的情况，因此搜集较新的智能合约源代码进行研究是十分必要的。\autoref{tab:solidity_evm_update}显示了自2018以年来Solidity语言和EVM的重要版本更新。
-
-下一步是确定搜集何种数据以及如何搜集数据。本文的目标是研究智能合约的漏洞情况，以及在以太坊虚拟机上的执行情况，因此需要从以太坊网络获取至少产生过一笔交易的智能合约。相比于Github等代码托管平台上的智能合约源代码，从以太坊区块链上获取的智能合约更加具有现实意义。Evgeny\cite{bigquery_ethereum}在BigQuery\footnote{Google BigQuery 是 Google Cloud Platform 提供的一项企业级数据仓库服务，它允许执行快速的 SQL 查询和交互式分析大规模数据集}上创建并公开了以太坊数据库，包含以太坊区块链上智能合约和交易的所有信息。同时部署了自动化工具每天从以太坊中提取最新的数据，并将其同步到数据库中。另一方面，Etherscan\footnote{https://www.etherscan.io/}是一个以太坊区块链数据分析平台，提供了应用程序接口（Application Programming Interface，API）用于查询区块链上的数据。综上所述，搜集数据的方法包含2个步骤：首先使用BigQuery数据库收集至少有一笔交易的智能合约账户地址，然后将合约地址作为参数调用Etherscan相关的API得到智能合约的源代码等数据。
+\subsection{数据搜集}
+\label{sec:数据搜集}
+% 下一步是确定搜集何种数据以及如何搜集数据。
+本文的目标是研究智能合约的漏洞情况，以及在以太坊虚拟机上的执行情况，因此需要从以太坊网络获取至少产生过一笔交易的智能合约。相比于Github等代码托管平台上的智能合约源代码，从以太坊区块链上获取的智能合约更加具有现实意义。Evgeny\cite{bigquery_ethereum}在BigQuery\footnote{Google BigQuery 是 Google Cloud Platform 提供的一项企业级数据仓库服务，它允许执行快速的 SQL 查询和交互式分析大规模数据集}上创建并公开了以太坊数据库，包含以太坊区块链上智能合约和交易的所有信息。同时部署了自动化工具每天从以太坊中提取最新的数据，并将其同步到数据库中。另一方面，Etherscan\footnote{https://www.etherscan.io/}是一个以太坊区块链数据分析平台，提供了应用程序接口（Application Programming Interface，API）用于查询区块链上的数据。综上所述，搜集数据的方法包含2个步骤：首先使用BigQuery数据库收集至少有一笔交易的智能合约账户地址，然后将合约地址作为参数调用Etherscan相关的API得到智能合约的源代码等数据。
 \begin{table}[htbp]
     \caption{\label{tab:solidity_evm_update}Solidity语言和EVM自2018年以来的版本更新}
     \small
@@ -67,14 +68,14 @@
 \label{sec:基于静态度量定义专家特征}
 在软件质量保证（Software Quality Assurance，SQA）工作中，静态代码指标（如 Halstead\cite{halstead}指标、McCabe\cite{mccabe}指标）发挥着重要作用。许多方法都是基于静态代码指标提出的，先前的工作\cite{menzies2007data,meyers2007empirical,zimmermann2007predicting}也证实了这些指标对软件质量保证研究是有用的。因此，我们认为智能合约也可以从中获益，借助静态代码指标对合约进行漏洞检测和运行时崩溃研究。
 
-受先前工作\cite{halstead,mccabe,menzies2007data}的启发，本文定义了34个静态代码指标，其中22个与编程语言无关，这些指标进一步分为三个维度：复杂度度量指标、计数度量指标和面向对象度量指标；另外12个为Solidity语言相关的度量指标，这是因为智能合约与其他传统语言编写的程序有所不同，一些特性（如Gas机制）相关的指标可能会更精准地表征一个智能合约。
+受先前工作\cite{halstead,mccabe,menzies2007data}的启发，本文定义了34个静态代码指标，其中22个与编程语言无关，这些指标进一步分为三个维度：代码复杂度维度、计数维度和面向对象维度；另外12个为Solidity语言相关的度量指标，这是因为智能合约与其他传统语言编写的程序有所不同，一些特性（如Gas机制）相关的指标可能会更精准地表征一个智能合约。
 
 % 表\autoref{tab:metrics}显示了本文引入或定义的静态代码指标的概述，具体每个指标的含义将在下一小节阐述。
 
-\subsection{静态代码度量的四个维度}
-\label{sec:静态代码度量的四个维度}
-\subsection{代码复杂度}
-\label{sec:代码复杂度}
+% \subsection{静态代码度量的四个维度}
+% \label{sec:静态代码度量的四个维度}
+\subsection{代码复杂度维度}
+\label{sec:代码复杂度维度}
 
 代码复杂度指标（Code Complexity Metrics）是用于量化软件源代码复杂性的度量标准。有研究表明\cite{Chen2019AnEI,singh2015bug}，代码复杂度指标与程序中的复杂缺陷存在一定的相关性，这些指标可用于评估代码的难以理解性、可维护性和潜在缺陷。直观地说，一段代码越复杂，它成为缺陷代码的概率就越高，因此可以利用代码复杂度指标建立缺陷预测模型。
 

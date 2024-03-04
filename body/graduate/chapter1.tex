@@ -28,6 +28,32 @@
 \label{sec:智能合约漏洞检测研究现状}
 区块链因其安全性备受关注，然而智能合约中的漏洞所导致的安全问题却在一定程度上制约了区块链应用的流行，这种矛盾吸引了开发者和研究人员对智能合约漏洞检测技术的探索。目前已经诞生了多种漏洞检测方法，主要包括三类：静态分析法、动态分析法和机器学习法。
 静态分析法是指在不运行智能合约的前提下进行漏洞检测，主要包括以下方法：形式化验证法、符号执行法、污点分析法；动态分析法则是指在智能合约运行过程中进行漏洞检测，主要指模糊测试法；机器学习法主要包括利用传统的机器学习模型或人工神经网络模型对智能合约进行漏洞检测的方法。
+\autoref{tab:defect_detection_methods}中列出了每一种智能合约漏洞检测方法的名称、相关的论文数量及代表方法。
+
+\begin{table}[htbp]
+    \caption{\label{tab:defect_detection_methods}现有的智能合约漏洞检测论文数量及代表方法}
+    \small
+    \begin{threeparttable}
+        {
+            \renewcommand{\arraystretch}{1.5}
+        \begin{tabularx}{\linewidth}{cp{3cm}<{\centering}p{3cm}<{\centering}X<{\centering}}
+            \toprule
+            类别                     & 方法名称   & 相关论文数量* & 代表方法 \\ \midrule
+            \multirow{3}{*}{静态分析法} & 形式化验证法 & 15    & ZEUS\cite{kalra2018zeus}、VaaS\cite{garfatta2021survey}  \\
+                                   & 符号执行法  & 9    & Oyente\cite{luu2016making}、TeEther\cite{krupp2018teether}  \\
+                                   & 污点分析法  & 8    & Mythril\cite{mythril}、Sereum\cite{rodler2018sereum}  \\ \midrule
+            动态分析法                  & 模糊测试法  & 16    & ContractFuzzer\cite{jiang2018contractfuzzer}、Reguard\cite{liu2018reguard}、ILF\cite{he2019learning}  \\ \midrule
+            \multirow{2}{*}{机器学习法} & 传统机器学习法  & 32    & Soliaudit\cite{liao2019soliaudit}、Dynamit\cite{Dynamit}、TMLVD\cite{TMLVD}  \\
+                                   & 深度学习法  & 25    & SaferSC\cite{tann2018towards}、DR-GCN\cite{zhuang2021smart}、AME\cite{liu2021smart}  \\ \bottomrule
+        \end{tabularx}
+        }
+        \begin{tablenotes}
+            \footnotesize
+            \item[*] 每种方法相关的论文数量统计范围为2015年至2023年
+        \end{tablenotes}
+    \end{threeparttable}
+\end{table}
+
 \subsubsection{形式化验证法}
     
     形式化验证法利用数学语言和逻辑表达式，将智能合约中的逻辑关系转换为形式规范，通过数学推理和证明，发现可能存在的逻辑错误、漏洞和不安全的设计，从而提前识别潜在的风险。然而，形式化验证法也面临一些挑战，比如对于复杂合约的处理可能较为繁琐，且需要深厚的数学和形式化知识。
@@ -67,6 +93,7 @@
     机器学习方法的核心思想是通过手工或者自动提取智能合约的各种漏洞特征，并训练机器学习模型或深度学习模型，最后对新的合约进行漏洞预测。机器学习法可以从包含已知漏洞的数据样本中学习到智能合约的关键特征，从而在新的合约中识别潜在的安全问题。特别是深度学习模型，如循环神经网络（RNN）或长短时记忆网络（LSTM），能够更好地应对合约中复杂的逻辑和数据流。相比于前文提到的传统方法，机器学习法为智能合约漏洞检测提供了一种创新的、高效的解决方案\cite{cui2024}。
 
     2018年，Tann等人提出的SaferSC\cite{tann2018towards}主要利用长短时记忆网络（Long short-term memory, LSTM）快速检测智能合约漏洞，这也是首次深度学习方法和智能合约漏洞检测相结合。随着合约的复杂度增加，SaferSc保持几乎恒定的分析时间，此外还能发现符号执行工具误报漏洞的合约。
+
     2020年，Zhuang等人提出了一种名为DR-GCN\cite{zhuang2021smart}的智能合约检测工具，它可以检测以太坊和Viterbi链上多种智能合约漏洞，通过图神经网络实现。首先构建图表示的智能合约函数的语法和语义结构，再利用无量纲图卷积神经网络检测智能合约漏洞。
     
     2021年，Liu等人提出的AME\cite{liu2021smart}模型结合了深度学习和专家模式。从源代码中提取的专家模式包含合约的局部信息，同时利用图结构来构建合约的控制流和数据流语义，最后使用注意力多编码器网络融合专家模式和语义图进行漏洞预测。实验证明该方法显著优于原先基于静态或动态分析的方法。
@@ -74,31 +101,6 @@
 
 % \textcolor{red}{这里可能需要扩充，说明每种方法的应用情况，对比不同方法}
 
-\autoref{tab:defect_detection_methods}中列出了每一种智能合约漏洞检测方法的名称、相关的论文数量及代表方法。
-
-\begin{table}[htbp]
-    \caption{\label{tab:defect_detection_methods}现有的智能合约漏洞检测论文数量及代表方法}
-    \small
-    \begin{threeparttable}
-        {
-            \renewcommand{\arraystretch}{1.5}
-        \begin{tabularx}{\linewidth}{cp{3cm}<{\centering}p{3cm}<{\centering}X<{\centering}}
-            \toprule
-            类别                     & 方法名称   & 相关论文数量* & 代表方法 \\ \midrule
-            \multirow{3}{*}{静态分析法} & 形式化验证法 & 47    & ZEUS\cite{kalra2018zeus}、VaaS\cite{garfatta2021survey}  \\
-                                   & 符号执行法  & 52    & Oyente\cite{luu2016making}、TeEther\cite{krupp2018teether}  \\
-                                   & 污点分析法  & 26    & Mythril\cite{mythril}、Sereum\cite{rodler2018sereum}  \\ \midrule
-            动态分析法                  & 模糊测试法  & 78    & ContractFuzzer\cite{jiang2018contractfuzzer}、Reguard\cite{liu2018reguard}、ILF\cite{he2019learning}  \\ \midrule
-            \multirow{2}{*}{机器学习法} & 传统机器学习法  & 94    & Soliaudit\cite{liao2019soliaudit}、Dynamit\cite{Dynamit}、TMLVD\cite{TMLVD}  \\
-                                   & 深度学习法  & 133    & SaferSC\cite{tann2018towards}、DR-GCN\cite{zhuang2021smart}、AME\cite{liu2021smart}  \\ \bottomrule
-        \end{tabularx}
-        }
-        \begin{tablenotes}
-            \footnotesize
-            \item[*] 每种方法相关的论文数量统计范围为2015年至2023年
-        \end{tablenotes}
-    \end{threeparttable}
-\end{table}
 
 \subsection{智能合约运行时崩溃研究现状}
 \label{sec:智能合约运行时崩溃研究现状}
