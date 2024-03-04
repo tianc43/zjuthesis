@@ -1,71 +1,14 @@
-\chapter{基于特征融合的智能合约表征}
-
-\section{数据搜集与预处理}
-\label{sec:数据搜集与预处理}
-
-本文拟使用深度学习方法进行智能合约漏洞检测和运行时崩溃相关的研究，需要使用大量的智能合约源代码作为训练模型的数据集，而现有的相关工作中使用的数据集或多或少存在一些问题，如智能合约数量太少、Solidity版本过低、没有标注等，\autoref{tab:present_dataset_statistics}显示了现有的智能合约数据集的统计信息。
-\begin{table}[htbp]
-    \caption{\label{tab:present_dataset_statistics}现有工作中使用的数据集的统计信息}
-    \small
-    \renewcommand{\arraystretch}{1.5}
-    \begin{tabularx}{\linewidth}{cX<{\centering}X<{\centering}X<{\centering}p{3cm}}
-        \hline
-    数据集名称     & 智能合约数量 & 包含源代码 & 漏洞标签 & 合约最大创建时间            \\ \hline
-    SmartBugs\cite{smartbugs} & 47518  & 是 & 无 & 2019年8月 \\
-    ScrawID\cite{yashavant2022scrawld}    & 6780 & 是   & 有  & 2020年6月 \\
-    Ren\cite{ren2021} &  45622 & 是 & 无 & 2020年12月 \\
-    JiuZhou\cite{jiuzhou}   & 176  & 是  & 有   & 2019年9月 \\
-    SmartCheck\cite{smartcheck}       & 4600   & 是 & 无 & 2018年11月  \\  \hline
-    \end{tabularx}
-\end{table}
-另一方面，Solidity语言的更新会修复一些低版本智能合约中的漏洞，以太坊虚拟机的更新也会减少智能合约出现运行时异常的情况，因此搜集较新的智能合约源代码进行研究是十分必要的。\autoref{tab:solidity_evm_update}显示了自2018以年来Solidity语言和EVM的重要版本更新。
-\subsection{数据搜集}
-\label{sec:数据搜集}
-% 下一步是确定搜集何种数据以及如何搜集数据。
-本文的目标是研究智能合约的漏洞情况，以及在以太坊虚拟机上的执行情况，因此需要从以太坊网络获取至少产生过一笔交易的智能合约。相比于Github等代码托管平台上的智能合约源代码，从以太坊区块链上获取的智能合约更加具有现实意义。Evgeny\cite{bigquery_ethereum}在BigQuery\footnote{Google BigQuery 是 Google Cloud Platform 提供的一项企业级数据仓库服务，它允许执行快速的 SQL 查询和交互式分析大规模数据集}上创建并公开了以太坊数据库，包含以太坊区块链上智能合约和交易的所有信息。同时部署了自动化工具每天从以太坊中提取最新的数据，并将其同步到数据库中。另一方面，Etherscan\footnote{https://www.etherscan.io/}是一个以太坊区块链数据分析平台，提供了应用程序接口（Application Programming Interface，API）用于查询区块链上的数据。综上所述，搜集数据的方法包含2个步骤：首先使用BigQuery数据库收集至少有一笔交易的智能合约账户地址，然后将合约地址作为参数调用Etherscan相关的API得到智能合约的源代码等数据。
-\begin{table}[htbp]
-    \caption{\label{tab:solidity_evm_update}Solidity语言和EVM自2018年以来的版本更新}
-    \small
-    \renewcommand{\arraystretch}{1.5}
-    \begin{tabularx}{\linewidth}{p{1cm}p{7cm}<{\raggedright}X<{\raggedright}}
-    \hline
-    \textbf{年份} & \textbf{EVM更新内容} & \textbf{Solidity 更新内容} \\ \hline
-    2018 & 性能优化，安全性增强 & 0.5.x: 明确可见性声明，引入新的数据位置 \\ \hline
-    2019 & Gas成本优化，抗DDoS能力提升，以太坊与Zcash互操作性，智能合约创新功能 & 0.7.0: 禁止某些标识符，引入Unicode字符串，构造函数可见性废弃，严格状态可变性 \\ \hline
-    2020 & 移除难度炸弹，应对区块生成时间增长问题 & 0.7.x: 新增error类型，废除fallback函数 \\ \hline
-    2021 & 改变手续费结构，引入基础费与矿工费，销毁部分基础费以降低ETH流通量 & 0.8.x: 引入算术运算溢出检查，优化事件列表 \\ \hline
-    2022 & PoW转PoS，验证节点与出块奖励变更，手续费与存储优化。 & 语言和编译器优化、支持新的以太坊功能 \\ \hline
-    2023 & 质押提款功能，降低Layer-2解决方案Gas费，引入EOF优化智能合约字节码 & 0.9.0.alpha: 集成require()与Custom Error，IR优化，增强错误处理，引入EOF \\ \hline
-    \end{tabularx}
-    \end{table}
-\subsection{数据预处理}
-\label{sec:数据预处理}
-
-最后一步需要对原始数据集进行预处理，过滤掉一些不符合期望的智能合约，我们设定了以下的排除规则：
-\begin{itemize}
-    \item \textbf{移除重复的合约}。有些合约可能会被重复部署，所以我们比较Solidity文件的MD5值，如果相同则排除其一。
-    \item \textbf{移除交易数太少的合约}。交易数太少的合约可能含有严重的缺陷，没有足够的运行信息证明其安全性，所以研究意义不大。
-    \item \textbf{移除编译错误的合约}。编译错误的合约无法运行，没有研究价值。
-    \item \textbf{移除低版本的合约}。低于0.4.11的Solidity版本与更新版本存在较大差异，且可能在将来被废弃。
-\end{itemize}
-
-通过上述方法，我们首先在BigQuery中得到了\num{8183198}个智能合约地址，在Etherscan上获得的经过验证的合约源代码共有\num{133290}份，最后经过上述排除规则，我们总计得到了\num{54739}份智能合约源代码用于下文的研究。
-\subsection{数据集标注}
-\label{sec:数据集标注}
-% \textcolor{red}{这里可能要给数据集打标签}
-% 上文收集的数据集
-根据不同类别的漏洞的出现概率及其在现实世界的重要性，本文选择4种漏洞作为研究对象：权限控制、算术漏洞、重入漏洞以及未检查调用。由于当前没有途径或方法获得智能合约的绝对标签，因此本文只能借鉴已有工作\cite{yashavant2022scrawld}，利用多种现有的漏洞检测工具对每一份智能合约进行处理，得到其标签后，根据每种漏洞能被检测出来的工具数量，设置不同的检出阈值，即该漏洞被多少种检测工具确认后才将其标注为真。
+\chapter{基于特征融合的智能合约漏洞检测方法}
+\section{方法概述}
+\label{sec:方法概述}
+Ni等人\cite{bestofboth}曾探究了融合静态代码指标和语义特征在识别和定位缺陷提交工作中的有效性，并构建了统一的模型JIT-Fine用于即时缺陷预测和定位，实验结果表明，JIT-Fine在10项性能指标上均优于当下所有最先进的基线方法。受此启发，本文将尝试融合智能合约的静态代码指标和语义特征用于漏洞检测。另一方面，预训练模型可以学习并理解复杂的程序结构，并且具有跨语言通用性，大量工作表明预训练模型在漏洞检测任务中表现出色\cite{pretrained_is_good_1,pretrained_is_good_2,pretrained_is_good_3}。同时，Wu等人的研究表明预训练模型在识别智能合约的重入漏洞方面，明显优于当时最先进的方法\cite{wu2021peculiar}。遵循上述思路，本文拟采用GraphCodeBert模型为基础进行智能合约的漏洞检测研究。总的来说，本文的研究方法主要包含以下几个步骤：\textcircled{1}计算静态代码指标。依据\autoref{sec:基于静态度量定义静态代码指标}描述的静态代码指标，从静态代码分析的角度对智能合约进行表示。\textcircled{2}基于合约语义图提取语义特征。依据\autoref{sec:基于合约语义图提取语义特征}描述的三种语义图，提取智能合约的语义特征。\textcircled{3}基于GraphCodeBERT训练漏洞检测模型。以GraphCodeBERT模型为基础，融合前两步生成的静态代码指标和语义特征训练漏洞检测模型。\autoref{fig:framework2}是该方法的示意图。接下来，本文将逐一介绍上述三个步骤。
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{pictures/dataset_labels}
-    \caption{\label{fig:dataset_labels}本文搜集的智能合约数据集中各种漏洞的数量}
+    \includegraphics[width= \linewidth]{pictures/framework2}
+    \caption{\label{fig:framework2}本文提出的漏洞检测方法示意图}
 \end{figure}
-比如共有3种工具能检测出智能合约中的重入漏洞，那么针对重入漏洞的检出阈值就为2，即当有两种检测工具都检测出某合约包含重入漏洞时，本文才将其标注为包含重入漏洞。通过上述方法，本文采用了5种广泛使用的漏洞检测工具，即Slither、Mythril、Oyente、Osiris和SmartCheck，并参照论文\cite{yashavant2022scrawld}设置4种漏洞的检出阈值，使用SmartBugs智能合约分析框架\cite{smartbugs}完成数据集标注工作，最终得到的数据集的统计信息如\autoref{fig:dataset_labels}所示。
-% 由于当前没有高质量的已标注的智能合约源代码数据集，或者相关数据集中的源代码数量太少，因此本文需要自行标注搜集到的智能合约源代码。而当前
-
-
-\section{基于静态度量定义专家特征}
-\label{sec:基于静态度量定义专家特征}
+\section{基于静态代码度量定义静态代码指标}
+\label{sec:基于静态代码度量定义静态代码指标}
 在软件质量保证（Software Quality Assurance，SQA）工作中，静态代码指标（如 Halstead\cite{halstead}指标、McCabe\cite{mccabe}指标）发挥着重要作用。许多方法都是基于静态代码指标提出的，先前的工作\cite{menzies2007data,meyers2007empirical,zimmermann2007predicting}也证实了这些指标对软件质量保证研究是有用的。因此，我们认为智能合约也可以从中获益，借助静态代码指标对合约进行漏洞检测和运行时崩溃研究。
 
 受先前工作\cite{halstead,mccabe,menzies2007data}的启发，本文定义了34个静态代码指标，其中22个与编程语言无关，这些指标进一步分为三个维度：代码复杂度维度、计数维度和面向对象维度；另外12个为Solidity语言相关的度量指标，这是因为智能合约与其他传统语言编写的程序有所不同，一些特性（如Gas机制）相关的指标可能会更精准地表征一个智能合约。
@@ -146,15 +89,78 @@
     % \item 依赖库数量（NOL）。库（Library）是一种特殊的合约，其中的函数必须保证不修改状态。库被部署在特定地址后可以重复使用。然而库的质量直接影响了主合约的质量，如果库中存在分享代码，依赖它的智能合约就会包含潜在风险。该指标衡量了Solidity源文件中使用了多少库。
     % \item 接口数量（NOI）。良好的结构设计可以提高代码质量，接口（Interfact）将类的定义与实现分离开来，提供了更好的可读性和可扩展性。因此，使用接口进行模块化设计可以在一定程度上提高合约质量。
 \end{enumerate}
+\subsection{计算静态代码指标}
+\label{sec:计算静态代码指标}
+\autoref{sec:数据搜集与预处理}中获取的数据集并不包含合约的编译信息，为了获得\autoref{sec:基于静态度量定义静态代码指标}中定义的静态代码指标，我们需要在本地编译Solidity源文件，然后构建抽象语法树再从中提取相关信息。py-solc-x\footnote{https://github.com/ApeWorX/py-solc-x}是Solidity编译器solc\footnote{https://github.com/ethereum/solc-bin}的Python版本，py-solc-ast\footnote{https://github.com/iamdefinitelyahuman/py-solc-ast}可以从solc编译后的信息中构建AST，并提供了API获取相关信息。
 
+借助上述工具，我们提取出了基于静态代码度量的静态代码指标，其统计信息如\autoref{tab:dataset_statistics}所示。
+\begin{table}[htbp]
+    \caption{\label{tab:dataset_statistics}本数据集静态代码指标的统计信息}
+    \small
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabularx}{\linewidth}
+        {p{3cm}<{\centering}X<{\centering}p{1.5cm}<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}X<{\centering}}
+    \hline
+    \textbf{指标}                    & \textbf{平均值}   & \textbf{最小值} & \textbf{第一四分位数} & \textbf{中位数}  & \textbf{第三四分位数} & \textbf{最大值}   \\ \hline
+    AvgCyclomatic         & 1.34        & 0   & 1.05   & 1.15 & 1.47   & 63.20 \\
+    MaxCyclomatic         & 3.64        & 0   & 2      & 2    & 4      & 611   \\
+    MaxInheritanceTree    & 1.47        & 0   & 0      & 1    & 2      & 10    \\
+    MaxNesting            & 1.45        & 0   & 1      & 1    & 2      & 125   \\
+    SumCyclomatic         & 29.72      & 0   & 12     & 18   & 33     & 632   \\
+    CountContractCoupled  & 0.53        & 0   & 0      & 0    & 1      & 17    \\ \hline
+    CountLineCode         & 348.61    & 2   & 132    & 223  & 394    & 11706 \\
+    CountLineCodeExe      & 198.07    & 2   & 77     & 118  & 224    & 5196  \\
+    CountLineComment      & 97.11     & 0   & 17     & 56   & 112    & 9347  \\
+    CountStmt             & 78.06      & 0   & 29     & 47   & 88     & 1424  \\
+    CountLineBlank        & 59.09      & 0   & 20     & 37   & 67     & 3711  \\
+    RatioCommentToCode    & 0.24        & 0   & 0.12   & 0.26 & 0.35   & 0.95  \\ \hline
+    CountContractBase     & 4.43        & 0   & 2      & 3    & 5      & 80    \\
+    CountDependence       & 3.01        & 0   & 1      & 2    & 4      & 32    \\
+    CountContract         & 4.43        & 0   & 2      & 3    & 5      & 80    \\
+    CountTotalFunction    & 26.71      & 0   & 13     & 30   & 30     & 835   \\
+    CountPublicVariable   & 9.15        & 0   & 5      & 7    & 10     & 208   \\
+    CountVariable         & 12.64      & 0   & 7      & 9    & 14     & 212   \\
+    CountFunctionPrivate  & 0.59        & 0   & 0      & 0    & 0      & 64    \\
+    CountFunctionlnternal & 5.09       & 0   & 0      & 4    & 5      & 629   \\
+    CountFunctionExternal & 1.86        & 0   & 0      & 0    & 1      & 280   \\
+    CountFunctionPublic   & 19.16      & 0   & 9      & 15   & 24     & 308   \\ \hline
+    NOI                   & 0.21        & 0   & 0      & 0    & 0      & 16    \\
+    NOL                   & 0.63        & 0   & 0      & 1    & 1      & 27    \\
+    NOSV                  & 16.31      & 0   & 7      & 10   & 17     & 1367  \\
+    NOMap                 & 3.40        & 0   & 3      & 3    & 4      & 89    \\
+    NOPay                 & 1.12        & 0   & 0      & 1    & 1      & 33    \\
+    NOE                   & 4.31        & 0   & 2      & 3    & 6      & 76    \\
+    NOMod                 & 1.95        & 0   & 0      & 1    & 3      & 49    \\
+    NOT                   & 1.30        & 0   & 0      & 1    & 2      & 56    \\
+    NOC                   & 0.10        & 0   & 0      & 0    & 0      & 13    \\
+    NODC                  & 0.00        & 0   & 0      & 0    & 0      & 16    \\
+    NOSF                  & 9.51       & 0   & 4      & 8    & 11     & 395   \\
+    SDFB                  & 0.51        & 0   & 0      & 1    & 1      & 1     \\ \hline
+\end{tabularx}
+\end{table}
+% 因此，我们在表 2 中列出了所研究合约的摘要。第一行显示了我们要分析的内容，包括从 Etherscan 上收集的 50994 个源代码文件（.sol 文件）中的智能合约、库、接口、事件、修改器和 LOC。如表所示，我们共分析了 225,918 份子合约（包括主合约及其附属合约）、32,165 个库、10,927 个接口、219,657 个事件、99,395 个修改器和 17,776,799 个 LOC。第二行显示的是每个 Solidity 源代码文件的平均统计信息。
+% 平均而言，每个 Solidity 源文件有 4.43 个合约，这意味着开发人员更愿意将应用程序划分为更小的功能，进一步降低合约的复杂性。此外，每个 Solidity 源文件有 4.31 个事件，这意味着许多执行信息将被记录到以太坊中。修改器是 Solidity 中的函数包装器，可以改变操作顺序、检查权限、添加功能和重复使用代码。每个 Solidity 源文件包含 1.95 个修改器。库和接口相对较少，大约每两份和五份 Solidity 源代码就分别定义了一个库和一个接口。最后，我们发现平均每个 Solidity 源代码文件包含约 350 行代码，这表明一份功能完善的合同相对较小。
+% 最后一行显示了这些研究的智能合约提交给 Etherscan 进行验证的日期。我们发现，大多数智能合约都是在 2018 年提交验证的，占研究合约的 82.7%（42180/50994）。
+分析\autoref{tab:dataset_statistics}中的结果，我们能得到以下结论：
+
+% 表3展示了我们对研究中的所有智能合约手动定义的度量标准进行的统计。尽管存在明显的标准偏差，但我们依然能够得出一些基本结论。
+1）根据平均环路复杂度（AvgCyclomatic），可以发现智能合约的平均复杂性较低，其值为1.34，这表明大多数函数都是顺序结构，几乎不涉及复杂的条件判断。这一点也与最大嵌套度（MaxNesting）展示的结果相似，其平均值为1.45，显示出智能合约中并没有过于深层的嵌套结构。此外，合约耦合度计数（CountContractCoupled）揭示了智能合约间的依赖关系。从平均值（0.53）和第三四分位数（1）来看，大多数合约并没有在代码中使用其他合约，表明智能合约之间相对独立，大部分功能由合约本身调用，而非其他合约。
+
+2）平均来看，合约中执行的代码行数并不多（约198行），意味着大多数智能合约相对易于阅读。大部分合约都有良好的注释，平均每个合约中注释与代码的比例约为24\%。
+
+3）根据最大继承树（MaxInheritanceTree）的值，超过半数的智能合约至少有一个父合约。此外，大多数智能合约至少有1个依赖合约和2个基本合约，这意味着它们大多通过继承其他合约来开发，并且合约间的耦合关系较为松散。
+
+4）关于存储变量，可以发现它们的使用频率一般，平均数为16.31，这表明智能合约在以太坊中占用的存储空间还算适度。NOPay的平均值和中位数分别为1.1和1，这意味大约一半的智能合约支持以太币的转账。这一点通过合约中转账操作的平均数NOT得到进一步的证实。
+
+5）NOE的第一四分位数和平均值分别为2和4.31，表明大多数智能合约定义了事件，能够将关键的执行信息记录在以太坊中。至于SDFB，其平均值和中位数分别为0.51和1，表明约一半的智能合约保留了默认的fallback函数。
 \section{基于合约语义图提取语义特征}
-\label{sec:基于合约语义图提取语义特征}
-%描述一下语义信息对深度学习的意义。
 
 已有许多工作证明，相比于源代码，基于图的表示法往往更能保留复杂程序的结构特征\cite{allamanis2017learning}，这有助于模型更好地理解程序的语义信息，从而提高在代码理解相关下游任务中的性能。这些与程序结构相关的图称为语义图（Semantic Graph），应用最广泛的语义图便是抽象语法树，此外还有数据流图、控制流图、函数调用图等，\autoref{sec:智能合约漏洞检测研究现状}中描述的污点分析法和符号执行法对控制流图和函数调用图有一定的应用。本文拟挖掘智能合约中的语义信息用于训练漏洞检测模型，因此在此章节引入智能合约的数据流图、控制流图和函数调用图，下面简单介绍一下这三种语义图。
-
-\subsection{数据流图}
-\label{sec:数据流图}
+% \section{构建语义图}
+% \label{sec:构建语义图}
+% 抽象语法树以结构化的形式记录了源代码中的关键信息，因此可以从Solidity源代码的AST中提取智能合约的语义信息，然后分别构建数据流图、控制流图和函数调用图。接下来本文将逐一介绍构建这三种语义图的方法。
+\subsection{构建数据流图}
+\label{sec:构建数据流图}
 数据流图（Data Flow Graph，DFG）是一种表示变量之间依赖关系的有向图，其中节点表示变量，有向边表示变量值的流动方向。数据流图为模型理解程序的结构特征带来了关键的语义信息，已被广泛应用在各种程序分析工作中\cite{hellendoorn2019global,allamanis2018learning,guo2020graphcodebert}。
 
 与AST不同的是，对于相同功能的程序，尽管各种语言的抽象语法不同，但数据流是相同的。以 $a=maxValue-minValue$ 为例，仅从变量a的名字是无法得知该变量值所代表的实际含义，但从数据流的角度来看，a的值来自maxValue和minValue的差，变量a的含义可能是一个数组的极差。
@@ -165,9 +171,59 @@
 如果用形式化语言表述，将从AST中得到的变量序列记为$V=\left\{v_1, v_2, \ldots, v_k\right\}$，将表明了数据流动方向的边的集合表示为$E=\left\{\varepsilon_1, \varepsilon_2, \ldots, \varepsilon_l\right\}$，那么图$DFG(S)=(V, E)$表示源代码$S$中的数据流图。
 %%%%%%%%%%%%%%%%%%%% 如果需要时再增加这部分内容 %%%%%%%%%%%%%%%
 Wu等人\cite{wu2021peculiar}在研究智能合约的重入漏洞时，提出了关键数据流图（Curcial Graph Flow Data，CDFG）的概念。他们认为，智能合约的漏洞存在于几个关键语句中，整个数据流图中也只有部分信息对于漏洞检测任务有帮助。因此为了减少无用信息的干扰，他们通过剔除DFG中与漏洞无关的数据流关系，构建了关键数据流图，用来表达合约中与漏洞相关的关键语义信息。本文将沿用其思路与做法。
-\subsection{控制流图}
-\label{sec:控制流图}
 
+在\autoref{sec:计算静态代码指标}中，我们已经获得了每个合约的抽象语法树，树的叶子节点记录的恰好是程序中的变量和字面量，将每个变量作为图中的一个节点，依据变量值在程序中的传递过程构建图中的有向边。变量的传递有两种方式，一种是直接引用，另一种是通过赋值语句。
+直接使用函数入参形成的数据流边属于第一种方式，称之为“comesFrom”类型。
+以赋值语句$a=MaxValue-MinValue$为例，它属于第二种方式，称之为“computedFrom”类型，此时需要创建两条有向边$\left\langle MaxValue,a\right\rangle$和$\left\langle MinValue,a\right\rangle$。
+
+在本文中，构建数据流图的方法将沿用论文\cite{wu2021peculiar}提出的算法。
+% 更具体地构建数据流图的过程描述为：遍历AST的所有节点，如果当前节点是叶子节点且属于标识符类型（identifier），则将其添加到变量集合中；如果当前节点的类型是赋值语句类型\footnote{当前节点一定具有左右子节点，因为当前合约是可以编译通过的，那么一定符合该语法规则}（assignment\_expression），则创建一条由右子节点指向左子节点的有向边，重复上述过程直到遍历完成，最终可以得到当前合约的数据流图。
+\subsection{构建函数调用图}
+\label{sec:构建函数调用图}
+函数调用图（Function Call Graph）是描述函数之间互相调用关系的有向图。他们在理解源代码，尤其是复杂的代码结构时非常有用。在函数调用图中，节点代表函数，边则代表调用关系，如果函数A调用函数B，那么函数调用图中会有一条从A到B的有向边。根据函数的调用顺序和相互关系，形成了一种树状或网状的结构。在智能合约中，函数可以使用不同的权限修饰符（如public、internal等）或语义修饰符（如pure、payable等），因此在创建智能合约的函数调用图时，可以针对被调用函数的修饰符对函数调用图的边进行分类，以表示该调用关系中被调用函数的类型。
+
+如果用形式化语言表述，从AST的可执行语句\footnote{即非变量或函数的声明或定义语句，可以执行且影响相关变量的值的语句}中提取的函数名称组成一个序列$F=\left\{f_1, f_2, \ldots, f_n\right\}$，函数之间的调用关系记为$E=\left\{\xi_1, \xi_2, \ldots, \zeta_1, \zeta_2, \ldots, \delta_1, \delta_2, \ldots\right\}$，其中$\xi, \zeta, \delta$分别表示针对上文中提到的不同类型函数的调用，那么图$FCG(S)=(F, E)$表示源代码$S$中的函数调用图。%%%%%%%%%%%%%\textcolor{red}{图xx表示了智能合约生成的函数调用图}。
+
+
+同样地，智能合约的函数调用图需要从AST中构建。在遍历AST的过程中，需要重点关注两种节点，即函数定义类型（function\_definition)和函数调用（call\_expression）类型。
+更具体地构建函数调用图的过程描述为：遍历AST的所有节点，同时使用栈数据结构记录当前路径上的函数标识符。如果当前遍历到的节点是函数定义类型，则将其添加到函数集合中；如果当前节点是函数调用类型，那说明栈顶标识符对应的函数调用了当前节点对应的函数，此时创建一条有向边，并根据当前节点对应函数的修饰符（internal、payable、pure等）标记这条边的类型。重复上述过程直到遍历完成，最终可以得到当前合约的函数调用图。上述算法的伪代码如代码清单\ref{alg:gen_callgraph}所示。
+
+
+\begin{algorithm}
+    \caption{GenerateCallGraph}
+    \label{alg:gen_callgraph}
+    \begin{algorithmic}[1]
+        \State \textbf{Input:} AST
+        \State \textbf{Output:} callGraph
+        \State functionSet = $\emptyset$
+        \State callGraph = $\emptyset$
+        \State Stack = $\emptyset$
+        \Function{traverseNodes}{node}
+            \If{node typeof \texttt{function\_definition}}
+                \State add node into functionSet
+                \State push $node_id$ into Stack
+            \ElsIf{node typeof \texttt{function\_call}}
+                \If{Stack is not $\emptyset$}
+                    \State sourceFunc $\gets$ peek of Stack
+                    \State targetFunc $\gets$ function code
+                    \State type of $\left\langle sourceFunc,targetFunc\right\rangle$ $\gets$ modifier of targetFunc
+                    \State add edge  $\left\langle sourceFunc,targetFunc\right\rangle$ to callGraph
+                \EndIf
+            \EndIf
+            \For{each child in node's children}
+                \State \Call{traverseNodes}{child}
+            \EndFor
+            \If{node is a \texttt{function\_definition}}
+                \State pop Stack
+            \EndIf
+        \EndFunction
+        \State \Call{traverseNodes}{root of AST}
+        \State \Return callGraph
+    \end{algorithmic}
+    \end{algorithm}
+
+\subsection{构建控制流图}
+\label{sec:构建控制流图}
 控制流图（Control Flow Graph，CFG）是一个过程或程序逻辑的抽象表示，描述了程序在执行期间可能经过的所有路径。Allen于1970年提出控制流图的概念\cite{allencfg}，后来逐渐成为静态分析和编译器优化的重要工具。
 
 在控制流图中，每个节点都表示一个基本代码块\footnote{即不含分支语句，可以顺序执行的代码}，即没有任何跳转指令的顺序执行的代码块，有向边表示程序的执行路径，在满足一定条件时，程序从一个基本代码块跳转到另一个基本代码块继续执行。控制流图可以帮助我们理解程序在运行时可能经过的所有路径，这对于理解程序的行为模式，以及寻找可能的逻辑错误或者漏洞等方面都有很大帮助。
@@ -179,13 +235,403 @@ Wu等人\cite{wu2021peculiar}在研究智能合约的重入漏洞时，提出了
 % 控制流图对应的是代码中的条件分支结构，在大多数高级编程语言中用if-else语句、while语句、for语句等表示。%%%%%%%%%%%%%%\textcolor{red}{图xx表示了图xx中的智能合约生成的控制流图}。
 
 
-\subsection{函数调用图}
-\label{sec:函数调用图}
-函数调用图（Function Call Graph）是描述函数之间互相调用关系的有向图。他们在理解源代码，尤其是复杂的代码结构时非常有用。在函数调用图中，节点代表函数，边则代表调用关系，如果函数A调用函数B，那么函数调用图中会有一条从A到B的有向边。根据函数的调用顺序和相互关系，形成了一种树状或网状的结构。在智能合约中，函数可以使用不同的权限修饰符（如public、internal等）或语义修饰符（如pure、payable等），因此在创建智能合约的函数调用图时，可以针对被调用函数的修饰符对函数调用图的边进行分类，以表示该调用关系中被调用函数的类型。
 
-如果用形式化语言表述，从AST的可执行语句\footnote{即非变量或函数的声明或定义语句，可以执行且影响相关变量的值的语句}中提取的函数名称组成一个序列$F=\left\{f_1, f_2, \ldots, f_n\right\}$，函数之间的调用关系记为$E=\left\{\xi_1, \xi_2, \ldots, \zeta_1, \zeta_2, \ldots, \delta_1, \delta_2, \ldots\right\}$，其中$\xi, \zeta, \delta$分别表示针对上文中提到的不同类型函数的调用，那么图$FCG(S)=(F, E)$表示源代码$S$中的函数调用图。%%%%%%%%%%%%%\textcolor{red}{图xx表示了智能合约生成的函数调用图}。
+控制流图依然需要从Solidity源代码的AST中构建，但与前两个语义图不同的是，控制流图的节点不再与AST中的节点相对应，前者应该是程序中的一个基本代码块，而不是一个标识符。在遍历AST的过程中，需要重点关注四种节点：if语句、for语句、while语句和do-while语句，称为分支语句节点。遇到分支节点时需要将其拆分为3个代码块：条件代码块、条件为真时的基本代码块和条件为假时的基本代码块。
+
+更具体地构建控制流图的过程描述为：遍历AST的所有节点，同时使用栈数据结构记录当前路径上经过的基本代码块。如果当前节点属于分支语句节点，则针对该分支语句解析出3个代码块，每个代码块均作为控制流图的节点，同时创建两条有向边，分别从条件代码块指向真代码块和假代码块；否则，创建一条有向边，从栈顶的基本代码块指向当前基本代码块。重复上述过程直到遍历完成，最终可以得到当前合约的控制流图。上述算法的伪代码如代码清单\autoref{alg:gen_cfg}所示。
+\begin{algorithm}
+    \caption{CreateControlFlowGraph}
+    \label{alg:gen_cfg}
+    \begin{algorithmic}[1]
+    
+    
+        \State \textbf{Input:} AST
+        \State \textbf{Output:} CFG
+        \State Stack = $\emptyset$
+        \State cfg = $\emptyset$
+        \State \Call{buildCFG}{$ast.root$, $Stack$}
+        \State \Return $cfg$
+    
+    
+    \Function{buildCFG}{$node$, $Stack$}
+        \If{$node$ is $\text{null}$}
+            \State \Return
+        \EndIf
+        \If{$node$ is a branch statement (if, for, while, do-while)}
+            \State $conditionBlock \gets$ $node.condition$
+            \State $trueBlock \gets$ $node.truePath$
+            \State $falseBlock \gets$ $node.falsePath$
+            \State add conditionBlock to CFG
+            \State create edge $\textless conditionBlock, trueBlock \textgreater$
+            \State create edge $\textless conditionBlock, falseBlock \textgreater$
+            \State push conditionBlock to Stack
+            \State \Call{buildCFG}{$node.truePath$, $Stack$}
+            \State \Call{buildCFG}{$node.falsePath$, $Stack$}
+            \State pop Stack
+        \Else
+            \State $currentBlock \gets$ $node$
+            \State add currentBlock to CFG
+            \If{Stack is not empty}
+                \State create edge $\textless Stack, currentBlock \textgreater$
+            \EndIf
+            \State push currentBlock to Stack
+        \EndIf
+        \ForAll{$child \in node.children$}
+            \State \Call{buildCFG}{$child$, $Stack$}
+        \EndFor
+    \EndFunction
+    
+    \end{algorithmic}
+    \end{algorithm}
+\subsection{提取语义特征}
+
+\section{数据搜集与预处理}
+\label{sec:数据搜集与预处理}
+
+本文拟使用深度学习方法进行智能合约漏洞检测和运行时崩溃相关的研究，需要使用大量的智能合约源代码作为训练模型的数据集，而现有的相关工作中使用的数据集或多或少存在一些问题，如智能合约数量太少、Solidity版本过低、没有标注等，\autoref{tab:present_dataset_statistics}显示了现有的智能合约数据集的统计信息。
+\begin{table}[htbp]
+    \caption{\label{tab:present_dataset_statistics}现有工作中使用的数据集的统计信息}
+    \small
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabularx}{\linewidth}{cX<{\centering}X<{\centering}X<{\centering}p{3cm}}
+        \hline
+    数据集名称     & 智能合约数量 & 包含源代码 & 漏洞标签 & 合约最大创建时间            \\ \hline
+    SmartBugs\cite{smartbugs} & 47518  & 是 & 无 & 2019年8月 \\
+    ScrawID\cite{yashavant2022scrawld}    & 6780 & 是   & 有  & 2020年6月 \\
+    Ren\cite{ren2021} &  45622 & 是 & 无 & 2020年12月 \\
+    JiuZhou\cite{jiuzhou}   & 176  & 是  & 有   & 2019年9月 \\
+    SmartCheck\cite{smartcheck}       & 4600   & 是 & 无 & 2018年11月  \\  \hline
+    \end{tabularx}
+\end{table}
+另一方面，Solidity语言的更新会修复一些低版本智能合约中的漏洞，以太坊虚拟机的更新也会减少智能合约出现运行时异常的情况，因此搜集较新的智能合约源代码进行研究是十分必要的。\autoref{tab:solidity_evm_update}显示了自2018以年来Solidity语言和EVM的重要版本更新。
+\subsection{搜集智能合约源代码}
+\label{sec:搜集智能合约源代码}
+% 下一步是确定搜集何种数据以及如何搜集数据。
+本文的目标是研究智能合约的漏洞情况，以及在以太坊虚拟机上的执行情况，因此需要从以太坊网络获取至少产生过一笔交易的智能合约。相比于Github等代码托管平台上的智能合约源代码，从以太坊区块链上获取的智能合约更加具有现实意义。Evgeny\cite{bigquery_ethereum}在BigQuery\footnote{Google BigQuery 是 Google Cloud Platform 提供的一项企业级数据仓库服务，它允许执行快速的 SQL 查询和交互式分析大规模数据集}上创建并公开了以太坊数据库，包含以太坊区块链上智能合约和交易的所有信息。同时部署了自动化工具每天从以太坊中提取最新的数据，并将其同步到数据库中。另一方面，Etherscan\footnote{https://www.etherscan.io/}是一个以太坊区块链数据分析平台，提供了应用程序接口（Application Programming Interface，API）用于查询区块链上的数据。综上所述，搜集数据的方法包含2个步骤：首先使用BigQuery数据库收集至少有一笔交易的智能合约账户地址，然后将合约地址作为参数调用Etherscan相关的API得到智能合约的源代码等数据。
+\begin{table}[htbp]
+    \caption{\label{tab:solidity_evm_update}Solidity语言和EVM自2018年以来的版本更新}
+    \small
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabularx}{\linewidth}{p{1cm}p{7cm}<{\raggedright}X<{\raggedright}}
+    \hline
+    \textbf{年份} & \textbf{EVM更新内容} & \textbf{Solidity 更新内容} \\ \hline
+    2018 & 性能优化，安全性增强 & 0.5.x: 明确可见性声明，引入新的数据位置 \\ \hline
+    2019 & Gas成本优化，抗DDoS能力提升，以太坊与Zcash互操作性，智能合约创新功能 & 0.7.0: 禁止某些标识符，引入Unicode字符串，构造函数可见性废弃，严格状态可变性 \\ \hline
+    2020 & 移除难度炸弹，应对区块生成时间增长问题 & 0.7.x: 新增error类型，废除fallback函数 \\ \hline
+    2021 & 改变手续费结构，引入基础费与矿工费，销毁部分基础费以降低ETH流通量 & 0.8.x: 引入算术运算溢出检查，优化事件列表 \\ \hline
+    2022 & PoW转PoS，验证节点与出块奖励变更，手续费与存储优化。 & 语言和编译器优化、支持新的以太坊功能 \\ \hline
+    2023 & 质押提款功能，降低Layer-2解决方案Gas费，引入EOF优化智能合约字节码 & 0.9.0.alpha: 集成require()与Custom Error，IR优化，增强错误处理，引入EOF \\ \hline
+    \end{tabularx}
+    \end{table}
+\subsection{预处理智能合约源代码}
+\label{sec:预处理智能合约源代码}
+
+最后一步需要对原始数据集进行预处理，过滤掉一些不符合期望的智能合约，我们设定了以下的排除规则：
+\begin{itemize}
+    \item \textbf{移除重复的合约}。有些合约可能会被重复部署，所以我们比较Solidity文件的MD5值，如果相同则排除其一。
+    \item \textbf{移除交易数太少的合约}。交易数太少的合约可能含有严重的缺陷，没有足够的运行信息证明其安全性，所以研究意义不大。
+    \item \textbf{移除编译错误的合约}。编译错误的合约无法运行，没有研究价值。
+    \item \textbf{移除低版本的合约}。低于0.4.11的Solidity版本与更新版本存在较大差异，且可能在将来被废弃。
+\end{itemize}
+
+通过上述方法，我们首先在BigQuery中得到了\num{8183198}个智能合约地址，在Etherscan上获得的经过验证的合约源代码共有\num{133290}份，最后经过上述排除规则，我们总计得到了\num{54739}份智能合约源代码用于下文的研究。
+\subsection{标注数据集}
+\label{sec:标注数据集}
+% \textcolor{red}{这里可能要给数据集打标签}
+% 上文收集的数据集
+根据不同类别的漏洞的出现概率及其在现实世界的重要性，本文选择4种漏洞作为研究对象：权限控制、算术漏洞、重入漏洞以及未检查调用。由于当前没有途径或方法获得智能合约的绝对标签，因此本文只能借鉴已有工作\cite{yashavant2022scrawld}，利用多种现有的漏洞检测工具对每一份智能合约进行处理，得到其标签后，根据每种漏洞能被检测出来的工具数量，设置不同的检出阈值，即该漏洞被多少种检测工具确认后才将其标注为真。
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{pictures/dataset_labels}
+    \caption{\label{fig:dataset_labels}本文搜集的智能合约数据集中各种漏洞的数量}
+\end{figure}
+比如共有3种工具能检测出智能合约中的重入漏洞，那么针对重入漏洞的检出阈值就为2，即当有两种检测工具都检测出某合约包含重入漏洞时，本文才将其标注为包含重入漏洞。通过上述方法，本文采用了5种广泛使用的漏洞检测工具，即Slither、Mythril、Oyente、Osiris和SmartCheck，并参照论文\cite{yashavant2022scrawld}设置4种漏洞的检出阈值，使用SmartBugs智能合约分析框架\cite{smartbugs}完成数据集标注工作，最终得到的数据集的统计信息如\autoref{fig:dataset_labels}所示。
+% 由于当前没有高质量的已标注的智能合约源代码数据集，或者相关数据集中的源代码数量太少，因此本文需要自行标注搜集到的智能合约源代码。而当前
+
+
+
+\section{基于特征融合的漏洞检测模型}
+\label{sec:基于特征融合的漏洞检测模型}
+% 或者将语义特征与静态代码指标联合训练来构建模型
+% 用源代码+语义图经过GraphCodeBERT模型生成高维向量，然后与静态代码指标结合，经过分类器
+以往的预训练模型总是将源代码视作普通文本，将其视为一连串token组成的序列，而忽视了源代码的复杂结构中蕴含的语义信息，于是GraphCodeBERT模型应运而生，它是第一个利用代码语义结构来学习代码表示的预训练模型\cite{guo2020graphcodebert}。最能表达程序语义信息的数据结构莫过于AST，但是AST作为树结构无法被直接输入到Transformer结构的模型中去，另一方面随着程序代码量的增多，AST的深度和宽度都会急剧增大。因此，GraphCodeBert模型采用了数据流图表征程序的语义信息。实验结果表明，引入了语义信息的GraphCodeBERT模型在多个下游任务上取得了最先进的效果。
+
+但是不容忽视的是，单独的数据流图相对于整个AST会丢失相当的语义信息，这就导致程序的语义信息并没有被完全利用起来。于是GraphCodeBERT模型的原作者又在两年后提出了UniXcoder模型\cite{unixcoder}，他们构建了一个one-to-one的映射函数，用于将AST转为一个序列结构，然后与源代码、注释拼接后作为模型的输入进行预训练。
+
+遵循上述思路，本文拟在GraphCodeBERT模型的基础上，尝试在预训练的过程中增加更多的语义信息，即控制流图和函数调用图；另一方面，前文已经阐述了静态代码指标在软件评估工作中的重要性，而且这些指标也能在一定维度上表达合约的结构信息，因此本文将尝试融合静态代码指标与语义特征，共同训练智能合约的漏洞检测模型。
+
+\subsection{模型架构}
+\label{sec:模型架构}
+本文遵循GraphCodeBERT模型的基本架构，即采用多层双向Transformer作为模型主干。与之不同的是，我们将在模型训练阶段融入更多的代码结构和语义信息。\autoref{fig:model_full}显示了本文采用的模型架构。%%%%%%%%%%%%%%%\textcolor{red}{这里描述一下模型的架构}
+
+
+具体来说，给定源代码$S=\{s_{1},s_{2},...,s_{n}\}$，可以利用\autoref{sec:构建语义图}中描述的方法构建三种智能合约语义图，首先是数据流图$DFG(S)=(Var,DFG\_Edge)$，其中$Var=\{v_1,v_2,\ldots,v_k\}$是智能合约$S$的变量集合，$DFG\_Edge=\{\epsilon_1,\epsilon_2,~\ldots,~\epsilon_l\}$是有向边，表示每个变量的值来自哪里；然后是函数调用图$FCG(S)=(Func,FCG\_Edge)$，$Func=\{f_1,f_2,\ldots,f_s\}$是智能合约的函数集合，$FCG\_Edge=\{\zeta_1,\zeta_2,~\ldots,~\zeta_l\}$是有向边，表示合约内不同函数的调用关系；最后还有控制流图$CFG(S)=(Block,CFG\_Edge)$，其中$Block=\{b_1,b_2,\ldots,b_t\}$表示合约内的基本代码块，$CFG\_Edge=\{\iota_1,\iota_2,~\ldots,~\iota_l\}$表示是有向边，表示合约的执行路径。然后，遵循GraphCodeBERT模型的思路，将源代码和三种语义信息拼接成一个序列$I=\{[CLS],S,[SEP],Var,[SEP],Func,[SEP],Block\}$，其中$[CLS]$是每个输入序列前的特殊标记，$[SEP]$是不同数据段之间的分隔符。
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=.98\linewidth]{pictures/model_full}
+    \caption{\label{fig:model_full}本文采用的模型架构}
+\end{figure}
+
+下一步是将输入序列$I$转换为输入向量$H^0$。主要方法是，先对输入序列中的每个token生成嵌入向量（Embedding），然后将之与该token的位置嵌入向量相加，最终得到整个序列的输入向量。具体地，对于源代码$S$中的每个token，它的位置嵌入向量由该token在源代码中所处的位置序号生成；对于$Var$、$Func$、$Block$中的token，需要使用特殊的标记符生成位置嵌入向量，以此来表示他们是语义图中的节点，而非源代码中的字段。
+
+输入向量$H^0$在经过$N$个Transformer层后被转换为上下文表示（Contextual Representation)，即$H^n=transformer_n(H^{n-1}),n\in[1,N]$，其中，每个Transformer层都包含一个完全相同的Transformer结构。向量$H^{n-1}$在$n-1$层经过Encoder编码和多头自注意力操作\cite{attention}后首先生成向量$G^n$（公式\eqref{eq1}），然后再经过一个前馈层生成向量$H^n$（公式\eqref{eq2}）。
+\begin{equation}
+    G^n=LN(MultiAttn(H^{n-1})+H^{n-1}) \label{eq1}
+\end{equation}
+\begin{equation}
+H^n=LN(FFN(G^n)+G^n) \label{eq2}
+\end{equation}
+在公式\eqref{eq1}和公式\eqref{eq2}中，$MultiAttn$表示多头自注意力操作，$FFN$表示一个两层前馈网络，$LN$表示层归一化操作。
+
+其中，第n个Transformer层中多头自注意力操作的输出$\hat{G}^n$是通过如下方式计算的：
+\begin{equation}
+Q_i=H^{n-1}W_i^Q, K_i=H^{n-1}W_i^K, V_i=H^{n-1}W_i^V \label{eq3}
+\end{equation}
+\begin{equation}
+head_i=\text{softmax}(\frac{\mathrm{Q_iK_i^T}}{\sqrt{\mathrm{d_k}}}+\mathrm{M})\mathrm{V_i} \label{eq4}
+\end{equation}
+\begin{equation}
+\hat{G}^n=[head_1;...;head_u]W_n^O \label{eq5}
+\end{equation}
+公式\eqref{eq3}表示，前一个Transformer层的输出$H^{n-1}$分别与3个模型参数$W_i^Q,W_i^K,W_i^V$做内积后得到注意力机制中的三元组$Q_i,K_i,V_i$，具体可参考论文\cite{attention}。
+
+公式\eqref{eq4}和公式\eqref{eq5}中，$u$是注意力头的数量，$d_k$表示每个注意力头的维度。$M$是基于图的注意力掩码矩阵，其中如果第$j$个token允许被第$i$个token注意到，则$M_{ij}$为0，否则为$-\infty$，具体细节将在下一节中阐述。
+
+
+% 首先可以利用xxx节描述的方法计算静态代码指标，表示为$M=\{m_{1},m_{2},...,m_{m}\}$，静态代码指标与语义特征的融合将在下一小节详细阐述。
+
+\subsection{基于图的注意力掩码}
+\label{sec:基于图的注意力掩码}
+为了将语义图合并输入到Transformer中，我们遵循原工作\cite{guo2020graphcodebert}引入了基于图的注意力函数来过滤掉不相关的信息。为了在模型中表示语义图中的有向边，以数据流图为例，如果存在有向边$\left\langle v_j,v_i \right\rangle$（即变量$v_i$的值来自变量$v_j$），此时掩码矩阵$M$中对应元素的值为0，那么节点query$q_{v_i}$可以注意到key$k_{v_j}$；否则，掩码矩阵中对应元素的值为$-\infty$，注意力得分${q^T}_jk_i$与之相加并且经过$softmax$函数后计算出的注意力权重变为0，从而避免key$k_i$的值对query$q_j$产生影响。%\textcolor{red}{从而避免query$q_j$注意到key$k_i$。}
+
+另一方面，为了表示源代码和数据流之间的关系，我们定义了一个集合$E$记录源代码token$c_j$和变量$v_i$之间的映射关系，即$\left\langle c_j,v_i \right\rangle \in E$表示数据流图中的节点$v_i$和源代码中的token$c_j$相对应。然后，当且仅当$\left\langle c_j,v_i \right\rangle \in E$时，我们允许节点$q_{v_i}$和代码$k_{c_j}$相互参与，用形式化语言描述如下：
+\begin{equation}
+    M_{ij} =
+    \begin{cases}
+        0 & \begin{aligned}
+               &\text{if } q_i \in \{[CLS], [SEP]\} \text{ or } q_i, k_j \in W \cup C \\
+               &\text{or } \langle q_i, k_j \rangle \in E \cup E'
+           \end{aligned} \\
+        -\infty & \text{otherwise}
+    \end{cases}
+    \label{eq:mask}
+\end{equation}
+%%%%%%%%% \textcolor{red}{必要时可扩展一下此章节}
+
+\subsection{预训练任务}
+\label{sec:预训练任务}
+除了基本的掩码语言建模（Masked Language Modeling，MLM）任务\cite{devlin2018bert}，GraphCodeBert模型中还引入两种全新的预训练任务：数据流边预测和跨源代码与数据流的变量对齐。本文中在数据流图基础上额外引入了控制流图和函数调用图，因此需要在每一类语义图上执行这两种预训练任务，即需要另外添加两类任务：控制流边预测和跨源代码与基本代码块对齐、函数调用边预测和跨源代码与函数名对齐。语义图边的预测任务是为了学习语义图的表示，让模型学习语义图的结构特征；源代码与语义图节点的对齐任务用于将源代码和语义图两种信息联系起来，让模型学习语义图中的节点在源代码中的位置信息。
+%%%%%%%%%%%%
+% 论文\cite{guo2020graphcodebert}中针对这两类任务提出了对应的损失函数（公式\eqref{loss1}和公式\eqref{loss2}），本文将遵循其设定。
+% \begin{equation}
+% loss_{EdgePred}=-\sum_{e_{ij}\in E_{c}}[\delta(e_{ij}\in E_{mask})logp_{e_{ij}}+(1-\delta(e_{ij}\in E_{mask}))log(1-p_{e_{ij}})] \label{loss1}
+% \end{equation}
+% \begin{equation}
+% loss_{NodeAlign}=-\sum_{e_{ij}\in E_{c}^{'}}[\delta(e_{ij}\in E_{mask}^{'})logp_{e_{ij}}+(1-\delta(e_{ij}\in E_{mask}^{'}))log(1-p_{e_{ij}})] \label{loss2}
+% \end{equation}
+
+\subsection{特征融合}
+\label{sec:特征融合}
+上文描述的基于GraphCodeBERT模型经过预训练后，能针对智能合约源代码和对应的语义图生成高维的上下文表示，而\autoref{sec:基于静态度量定义静态代码指标}中计算出的34个静态代码指标在一定维度上表达了智能合约的结构特征，因此如果能将这两种信息融合起来用于智能合约漏洞检测，可能会取得意想不到的效果，接下来将对此进行探究。
+
+常见的融合多种类特征的方法包括直接拼接、联合训练等。Pan等人\cite{pan2021}通过联合语义特征和静态代码指标训练了一个模型，用于自动识别开发者聊天室中的信息类型，取得了较好的效果。因此，本文也借鉴这种方式，联合静态代码指标和GraphCodeBERT模型生成的表示向量，训练智能合约漏洞检测模型。
+
+需要注意的是，静态代码指标生成的静态代码指标是包含34个维度的特征向量，相比于GraphCodeBERT模型生成的高维度表示向量。为了避免高维度的语义向量对低维度的静态代码指标向量形成压倒性优势，本文借鉴了Yang等人\cite{yang2015}的研究成果，利用深度学习技术\footnote{本文使用了一个全连接层}对静态代码指标向量进行嵌入，以获得高维表示向量。如果以$Metrics=\{m_1,m_2,\ldots,m_{34}\}$表示最初计算出的34个静态代码指标，那么经过全连接层进行嵌入后得到其高维度表示$V_{metrics}=\{\alpha_1,\alpha_2,\ldots,\alpha_t\}$。GraphCodeBERT模型生成的语义表示向量记为$V_{semantic}=\{\beta_1,\beta_2,\ldots,\beta_t\}$，也即公式\eqref{eq5}中的$\hat{G}^n$，在输入分类器时，将$V_{metrics}$和$V_{semantic}$拼接成一个新向量$U=\{\alpha_1,\alpha_2,\ldots,\alpha_t,\beta_1,\beta_2,\ldots,\beta_t\}$，然后在一个全连接层中对其进行fine-tune。
+
+在整个模型的最后，本文使用一个线性分类器，并使用$softmax$函数将结果转换为不同漏洞类别的预测概率，如公式\eqref{classifier}所示。
+\begin{equation}
+\hat{y}=Softmax(\hat{U}^{2t}) \label{classifier}
+\end{equation}
+\section{实验设计与结果分析}
+\label{sec:实验设计与结果分析}
+%%%%%%%%%% 描述实验步骤
+%%%%%%%%%%%%% 在预训练阶段，模型学习了如何从图结构中提取有用的信息，并转化为向量表示（Embedding）
+
+
+\subsection{实验环境及参数}
+\label{sec:实验环境及参数}
+本文中所有实验使用的软硬件环境如\autoref{tab:environment}所示。
+
+\begin{table}[htbp]
+    \caption{\label{tab:environment}本文用于开展实验的软硬件参数}
+    \small
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabularx}{\linewidth}{p{5cm}<{\centering}X<{\centering}}
+        \Xhline{2\arrayrulewidth}
+        环境      & 详细信息                                      \\ \hline
+        处理器     & Intel(R) Xeon(R) Gold 6226R CPU @ 2.90GHz \\
+        内存大小    & 256GB                                     \\
+        操作系统    & Ubuntu 20.04.1                            \\
+        开发语言    & Python 3.9.6                              \\
+        开发工具    & Visual Studio Code                        \\
+        深度学习框架  & PyTorch                                   \\
+        GPU型号   & NVIDIA GeForce RTX 3090 24GB              \\
+        GPU驱动版本 & CUDA 11.4                                 \\ 
+        \Xhline{2\arrayrulewidth}
+        \end{tabularx}
+\end{table}
+
+本实验采用的模型骨干是12层Transformer结构，具有 768 维隐藏状态和 12 个注意力头。参考论文\cite{guo2020graphcodebert}，设置本实验中源代码序列的最大长度为512，数据流序列的最大长度为64，控制流和函数调用序列的最大长度均为32，其余深度学习参数均遵循PyTorch和TensorFlow框架的默认值\footnote{https://pytorch.org/docs/stable/index.html}\footnote{https://www.tensorflow.org/api\_docs/python/tf}。\autoref{tab:super_parameters}展示了本实验中的一些关键超参数。
+\begin{table}[htbp]
+    \caption{\label{tab:super_parameters}现有工作中的超参数设定}
+    \small
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabularx}{\linewidth}{p{8cm}<{\centering}X<{\centering}}
+        \Xhline{2\arrayrulewidth}
+        参数                            & 参数值  \\ \hline
+        源代码序列最大长度（code\_length）                  & 512  \\
+        数据流序列最大长度（data\_flow\_length）            & 64   \\
+        控制流序列最大长度（control\_flow\_length）            & 32   \\
+        函数调用序列最大长度（call\_flow\_length）            & 32   \\
+        训练批大小（train\_batch\_size）            & 8    \\
+        验证批大小（eval\_batch\_size）             & 4    \\
+        梯度累积步长（gradient\_accumulation\_steps） & 2    \\
+        学习率（learning\_rate）                & 2e-5 \\
+        权重衰减系数（weight\_decay）                 & 1e-3  \\
+        Adam衰减系数（adam\_epsilon）                 & 1e-8 \\
+        最大梯度范数（max\_grad\_norm）               & 1.0  \\
+        最大训练步数（max\_steps）                    & -1   \\
+        学习率预热步数（warmup\_steps）                 & 0    \\
+        随机数种子（seed）                          & 42   \\
+        训练轮数（epochs）                        & 2    \\ \Xhline{2\arrayrulewidth}
+        \end{tabularx}
+\end{table}
+
+
+
+\subsection{评估指标}
+\label{sec:评估指标}
+% 在分类模型中，选用正确的评估标准对模型的度量和评估至关重要，能够及时发现模型的缺陷和可能出现的错误，并根据实际问题不断迭代优化模型。混淆矩阵作为一种可视化工具，通常用于监督学习中比较分类结果和实例的真实标签，反应了分类结果的混淆程度，矩阵的每一列代表实例的真实标签，每一行代表的是预测结果。 如表 4-2 所示，在混淆矩阵中，TP 代表真阳性，表示预测结果和真实结果均为正类；FP 代表假阳性，表示预测结果为正类但真实结果为负类；TN 代表真阴性，表示预测结果和真实结果均为负类；FN 代表假阴性，表示预测结果为负类但真实结果为正类。
+评估指标是用于判断模型预测效果的标准，它对理解模型的性能、优化模型和调整方法等具有重要意义。基于数据的真实标签和模型的预测标签最直接的评估工具就是混淆矩阵（Confusion Matrix），它是一个矩阵，每一行代表样本数据的真实标签，每一列代表预测标签，显示了模型的分类结果之间的混淆程度。本文中的数据样本是智能合约源代码，数据标签有三种情况：1）不包含任何漏洞；2）包含某一种漏洞；3）包含2种以上的漏洞，即本文的方法属于所谓的多标签分类（Multi-label Classification），因此本实验数据集中的每个样本的标签都是一个四维向量。例如，将四种漏洞按照算术漏洞、重入漏洞、权限控制漏洞和未检查调用漏洞排列成一个向量，若数据集中的某个合约的标签为$[ 1, 0, 1, 0 ]$，表示此合约同时包含算术漏洞和权限控制漏洞，而不包含重入漏洞和未检查调用漏洞。
+
+基于样本的真实标签和预测标签以及多标签分类法的评估方法，本文引入了以下几种评估指标：
+\begin{enumerate}[label=(\arabic*)]
+    \item 精确率（Precision）。精确率计算的是所有样本的平均精确率，对于每个样本来说，先计算标签每个维度的预测值在整个数据集中相同真实值的占比，最后再对标签的所有维度取平均值，该指标的计算方法如公式\eqref{eqprecision}所示。
+\begin{equation}
+    Precision=\frac1{|S|}\sum_{s\in S}\frac{|y_s\cap\hat{y}_s|}{|\hat{y}_s|} \label{eqprecision}
+\end{equation}
+    \item 召回率（Recall）。与精确率相似，召回率计算的是所有样本的平均召回率，对于标签的每一个维度，先计算所有样本中预测为真的样本数占整个数据集中真实值为真的占比，然后再对标签的所有维度取平均值，该指标的计算方法如公式\eqref{eqrecall}所示。
+\begin{equation}
+    Recall=\frac{1}{|S|}\sum_{s\in S}\frac{|y_s\cap\hat{y}_s|}{|y_s|} \label{eqrecall}
+\end{equation}
+    \item F1-score。F1值是精确率与召回率的调和平均值，用于同时考虑精确率和召回率时评估模型的预测效果，其计算方法如公式\eqref{eqf1}所示。
+\begin{equation}
+    F_\text{,}(y_s,\hat{y}_s)=\frac{1}{|S|}\sum_{s\in S}\frac{2*|y_s\cap\hat{y}_s|}{|\hat{y}_s|+|y_s|} \label{eqf1}
+\end{equation}
+\end{enumerate}
+
+在上述评估指标的公式中，$y_s$表示样本的真实标签，$\hat{y}_s$表示预测标签，$S$表示整个数据集。
+% 4）绝对匹配率（Exact Match Ratio）\par
+% 绝对匹配率是多标签分类方法中特有的评估指标，对一个样本来说，只有其预测标签向量和真实标签向量完全相同的情况下才算预测正确，也就是说只要有一个类别的预测结果有差异都算预测错误，该指标的计算方法如公式\eqref{eqemr}所示，其中$N$表示样本总数，$y_i$表示第i类标签的真实值，$\hat{y}_i$表示其预测值，$I(x)$为指示函数，且当$y_i$与$\hat{y}_i$完全相同时值为1否则为0。$EMR$值越大表示分类的准确率越高。
+% \begin{equation}
+% \text{EMR}(y,\hat{y})=\frac1{N} \sum_{ i = 0 }^{N-1}I(\hat{y}_i=y_i) \label{eqemr}
+% \end{equation}
+% 5）海明距离（Hamming Loss）\par
+
+% \begin{table}[htbp]
+%     \caption{\label{tab:confusion_matrix}现有工作中使用的数据集的统计信息}
+%     \small
+%     \renewcommand{\arraystretch}{1.5}
+%     \begin{tabularx}{\linewidth}{cX<{\centering}X<{\centering}X<{\centering}}
+%         \hline
+%     数据集名称     & 智能合约数量 & 源代码与字节码 & 时间段            \\ \hline
+%     smartbugs & 47,518  & 源代码；字节码 & 2015$\sim$2019 \\
+%     crawID    & 321432 & 源代码     & 2015$\sim$2018 \\
+%     JiuZhou   & 54325  & 字节码     & 2015$\sim$2018 \\
+%     xxx       & 5435   & 源代码；字节码 & 2015$\sim$2019  \\  \hline
+%     \end{tabularx}
+% \end{table}
+% 对于评估指标，我们采用广泛使用的 Precision、Recall 和 F1-score [7] 、 [17] 。我们选择宏观的方式进行评估，分别计算有漏洞和无漏洞合约的三个指标的值，然后取平均值作为最终结果。这种 a 方式可以反映我们方法的总体性能。
+% \begin{equation}
+% \text{F1-score}=2\cdot\frac{\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recal}} \label{f1-score}
+% \end{equation}
+% \subsection{实验设计}
+% \label{sec:实验设计}
+\subsection{实验结果分析}
+\label{sec:实验结果分析}
+按照本章描述的实验步骤，
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=.98\linewidth]{pictures/result_labels}
+    \caption{\label{fig:result_labels}本文提出的方法在数据集上的漏洞预测结果}
+\end{figure}
+我们对数据集中的\num{54739}份合约进行了漏洞检测，\autoref{fig:result_labels}显示了本文提出的方法在数据集上的漏洞预测结果。可以看出，对于不同类别的漏洞，本方法预测的漏洞分布情况与数据集的标签基本一致。
+
+
+为了深入地检验本文提出的漏洞检测方法的效果，我们将本方法与2种现有的智能合约漏洞检测方法进行比较：Slither\cite{slither}和DR-GCN\cite{liu2021smart}，前者是静态分析方法的代表，后者则是基于深度学习的检测方法。本次对比实验采用了上一节引入的Precision、Recall、F1-score三个指标，由于本文中使用的数据集是多标签的，因此我们针对每一种漏洞都计算了这三个指标，具体结果如\autoref{tab:chapter4_result1}所示。
+
+
+从\autoref{tab:chapter4_result1}可以总结出以下结论：
+
+1）本方法在算术漏洞检测上的效果显著优于其它两种方法，这很大可能与本方法中引入了数据流图有关，因为数据流图表示了变量的值来自哪一个变量，可以比较好地跟踪到超出数据范围的值或者除数为0类似的错误。
+
+2）对于权限控制漏洞的检测，尽管本方法的Recall为71.84\%，相对较低，但是Precision为96.97\%，而且F1-score为82.53\%，超过了Slither而低于DR-GCN。可以看出，本方法在权限控制漏洞检测时可能会有一些漏报，但报告的结果精确度很高。这可能是因为本方法在检测时更为谨慎，只有当模型非常确定的时候才会标注为漏洞，这样虽然可能会错过一些真正的漏洞（即Recall较低），但是可以减少误报，使得被模型标记的漏洞大部分都是真正的漏洞，从而提高了精准度。
+\begin{table}[htbp]
+    \caption{\label{tab:chapter4_result1}不同方法在本数据集上的实验结果}
+    \fontsize{8pt}{10pt}\selectfont
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabularx}{\linewidth}{p{1.3cm}|X<{\centering}X<{\centering}X<{\centering}|X<{\centering}X<{\centering}X<{\centering}|X<{\centering}X<{\centering}X<{\centering}|X<{\centering}X<{\centering}X<{\centering}}
+        \hline
+        \multirow{2}{*}{方法} & \multicolumn{3}{c|}{算术漏洞(\%)} & \multicolumn{3}{c|}{权限控制漏洞(\%)} & \multicolumn{3}{c|}{重入漏洞(\%)} & \multicolumn{3}{c}{异常调用漏洞(\%)} \\ \cline{2-13} 
+                            & {Recall} & {Precision} & \multicolumn{1}{c|}{F1} & {Recall} & {Precision} & \multicolumn{1}{c|}{F1} & {Recall} & {Precision} & \multicolumn{1}{c|}{F1} & {Recall} & {Precision} & {F1} \\ \hline
+        Slither & 68.92 & 72.47 & 70.65       & 73.23 & 78.91 & 75.96       & 76.90 & 78.04 & 77.47       & 67.93 & 68.52 & 68.22      \\
+        DR-GCN & 80.43 & 84.27 & 82.31       & \textbf{89.80} & 86.59 & \textbf{88.17} & 82.50 & 79.37 & 80.90       & 74.25 & 79.12 & 76.61      \\
+        本文      & \textbf{98.40} & \textbf{97.51}    & \textbf{97.95} & 71.84 & \textbf{96.97}    & 82.53       & \textbf{94.63} & \textbf{97.04}    & \textbf{95.82} & \textbf{95.40} & \textbf{98.32}    & \textbf{96.84}         \\ \hline
+        \end{tabularx}
+\end{table}
+3）对于重入漏洞和异常调用漏洞，本方法在三个指标上的表现均优于其他两个方法，合理推测，这可能与基于静态代码指标的静态代码指标以及控制流图和函数调用图有关，前者能很好地表达智能合约的结构特征，后者将智能合约的程序执行路径和函数调用输入模型，最终模型能学习到此类语义的表示，从而能识别出未知合约中类似的语义信息。
+
+4）除了权限控制漏洞，本方法在其他类别的漏洞检测上效果均优于其他两种方法。对这个结果的合理解释是，DR-GCN作为基于图神经网络的漏洞检测模型，比较擅长在直接在图形数据上学习表示并理解其中的复杂关系；而本文提出的方法以预训练模型为基础、融合静态代码指标和语义图信息作为模型输入，可以比较好地学习到智能合约的结构特征和语义信息，这也说明了预训练模型与特征融合的有效性。
+
+5） 对于重入漏洞，本方法的Recall为94.63\%，Precision为97.04\%，F1为95.82\%，均明显优于Slither和DR-GCN。
+
+6） 对于异常调用漏洞，本方法的Recall为95.40\%，Precision为98.32\%，F1-score为96.52\%，依旧明显优于其它两种方法。
+
+总的来说，本方法在准确度（Precision）方面表现良好，在召回率（Recall）和F1-score上表现优异，尤其在算术漏洞、重入漏洞和异常调用漏洞的检测中，其性能明显优于其他两种方法。虽然在权限控制漏洞的检测中，召回率稍微低一点，但精准度依旧高，说明虽然有漏报，但是报告的大部分都是准确的。
+
+% 表 4-4 所示为六个模型分别对五种漏洞进行检测的 Precision 值，Recall 值和 F1score，Precision 值可以衡量模型预测出来的样本中被正确预测的数量， Recall 值是用来表示实际样本中有多少被正确预测的数量，F1-score 是统计学中用来衡量二分类模型精确度的一种指标，它同时兼顾了分类模型的准确率和召回率，可以看作是模型准确率和召回率的一种加权平均。从表中可以发现 RNN、LSTM 和 Bi-LSTM 模型都出现了严重的过拟合现象，这是因为训练样本中整数上溢、整数下溢和交易顺序依赖三种漏洞的样本数量远远大于可重入漏洞和时间戳依赖漏洞的数量，模型在不平衡的数据下被训练
+% 地更倾向于样本都包含这三种漏洞，因此这三种漏洞的 Recall 值都为 1，而另外两种样本较少漏洞的 Recall 值为 0。而添加了注意力机制的 LSTM-ATT 模型以及 BiL-ATT 模型，能够合理均衡不同的漏洞，反映出注意力机制可以有效增强模型的泛化能力。由于 TextCNN 模型的网络结构较为简单，因此它也避免了过分拟合漏洞数量较多的漏洞。 BiL-ATT 模型虽然也在样本数量较少的漏洞分类精度不高，在可重入漏洞检测上的 Precision 值仅有 78.92\%，低于 LSTM-ATT 模型和 TextCNN 模型，但是在时间戳依赖漏洞上达到 83.68\%，远高于 LSTM-ATT 模型和 TextCNN 模型，并且在整数上溢、整数下溢和交易顺序依赖这三种漏洞数量较多的样本中，WBL-ATT 模型表现优秀，其 Precision 值大于 TextCNN 模型和 LSTM-ATT 模型。综合来说，BiL-ATT 模型具有较好的泛化性能，能有效地检测智能合约的多种漏洞。 
+\subsection{消融实验}
+\label{sec:消融实验}
+为了验证本文引入的两种语义图（主要是控制流图和函数调用图）、以及静态代码指标和语义特征融合训练的方法对漏洞检测任务的贡献，本文又在基本实验的基础上增加了消融实验，具体结果如\autoref{tab:ablation_result}所示。
+\begin{table}[htbp]
+    \caption{\label{tab:ablation_result}消融实验结果}
+    \small
+    \begin{threeparttable}{
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabularx}{\linewidth}{cX<{\centering}X<{\centering}X<{\centering}}
+        \hline
+        方法 & Recall*(\%) & Precision*(\%) & F1-score*(\%) \\
+        \hline
+        本方法 & \textbf{90.07} & \textbf{97.46} & \textbf{93.61} \\
+        移除静态代码指标 & 86.34 & 91.24 & 88.72 \\
+        移除语义特征 & 59.38 & 68.93 & 63.80 \\
+        \hline
+    \end{tabularx}
+    }
+    \begin{tablenotes}
+        \footnotesize
+        \item[*] 由于本章的实验是多标签分类，因此这里计算了所有漏洞相关指标的平均值。
+        % \item[$\star$] 仅移除控制流图和函数调用图，数据流图在论文\cite{wu2021peculiar}中已经被探究过
+    \end{tablenotes}
+\end{threeparttable}
+\end{table}
+从\autoref{tab:ablation_result}中可以看出，当移除静态代码指标时，三种指标Recall、Precision、F1-score分别下降的百分比为4.14\%、6.38\%、5.22\%，这表明静态代码指标可以在一定程度上反映合约的结构信息，能提升漏洞检测效果，但提升效果并不显著。当移除语义特征只使用静态代码指标时，三种指标分别下降的百分比为34.07\%、29.27\%、31.84\%，这表明语义信息可以显著提高模型对智能合约的学习能力，提升智能合约漏洞检测效果。
+
+% 移除静态代码指标时的下降百分比：
+
+% Recall 下降百分比：约为 4.12\%；Precision 下降百分比：约为 6.06\%
+% F1-score 下降百分比：约为 3.86\%
+% 当移除语义特征时，三种指标（Recall、Precision、F1-score）分别下降的百分比如下：
+
+% 移除语义特征时的下降百分比：
+
+% Recall 下降百分比：约为 34.06\%
+% Precision 下降百分比：约为 29.35\%
+% F1-score 下降百分比：约为 31.08\%
+% 这些百分比下降值可以帮助你了解在移除静态代码指标或语义特征时，性能指标的变化情况。移除语义特征对性能指标的影响明显更大，特别是对于 Recall 指标的影响
 
 
 \section{本章小结}
 \label{sec:本章小结3}
-本章工作的目标是从智能合约源代码中提取专家特征和语义特征作为数据集，以便于训练深度学习模型用于进一步的研究工作。首先介绍了搜集以太坊智能合约源代码、并对数据进行过滤和预处理的方法，然后定义了专家特征和语义特征用于表征智能合约，接着描述了提取两种特征的方法，最终得到一个大规模的、包含专家特征和语义特征的以太坊智能合约数据集。
+本章工作的目标是从智能合约源代码中提取静态代码指标和语义特征作为数据集，以便于训练深度学习模型用于进一步的研究工作。首先介绍了搜集以太坊智能合约源代码、并对数据进行过滤和预处理的方法，然后定义了静态代码指标和语义特征用于表征智能合约，接着描述了提取两种特征的方法，最终得到一个大规模的、包含静态代码指标和语义特征的以太坊智能合约数据集。
