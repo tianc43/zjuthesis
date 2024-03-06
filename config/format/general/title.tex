@@ -4,6 +4,7 @@
 \newcommand{\TitleLineTwo}{~}
 \newcommand{\TitleEngLineOne}{\TitleEng}
 \newcommand{\TitleEngLineTwo}{~}
+\newcommand{\TitleEngLineThree}{~}
 \newcommand{\MajorLines}{1}
 \newcommand{\MajorLineOne}{\Major}
 \newcommand{\MajorLineTwo}{~}
@@ -22,7 +23,12 @@
     \renewcommand{\TitleEngLineOne}{{#1}}
     \renewcommand{\TitleEngLineTwo}{{#2}}
 }
-
+\newcommand{\titleengthreelines}[3]{
+    \renewcommand{\TitleEngLines}{3}
+    \renewcommand{\TitleEngLineOne}{{#1}}
+    \renewcommand{\TitleEngLineTwo}{{#2}}
+    \renewcommand{\TitleEngLineThree}{{#3}}
+}
 \newcommand{\majortwolines}[2]{
     \renewcommand{\MajorLines}{2}
     \renewcommand{\MajorLineOne}{#1}
